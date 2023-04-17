@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
-	"github.com/fileReader/parser"
-
+	//"github.com/tylerm007/fileReader/parser"
 )
 
 // Config struct for webapp config
@@ -187,4 +189,79 @@ func main() {
 
 	// Run the server
 	cfg.Run()
+}
+
+func ParseRules(project string, mypath string) {
+	p := fmt.Sprintf("%s/%s", mypath, project)
+	files, err := ioutil.ReadDir(p)
+	if err != nil {
+		log.Fatal(err)
+	}
+	repos := make(map[string]interface{}, 0)
+	for _, file := range files {
+		//fmt.Println(file.Name(), file.IsDir())
+		if file.IsDir() {
+			p1 := fmt.Sprintf("%s/%s", p, file.Name())
+			files1, _ := ioutil.ReadDir(p1)
+			for _, f := range files1 {
+				//fmt.Println("===========")
+				//fmt.Println(f.Name(), f.IsDir())
+
+				if !f.IsDir() {
+					fp := fmt.Sprintf("%s/%s", p1, f.Name())
+					if strings.Contains(fp, ".json") {
+						fileContent, err := os.Open(fp)
+						defer fileContent.Close()
+						if err != nil {
+							log.Fatal(err)
+							return
+						}
+						byteResult, _ := ioutil.ReadAll(fileContent)
+						res := make(map[string]interface{}, 0) //RuleDef{}
+						json.Unmarshal([]byte(byteResult), &res)
+						repos[f.Name()] = res
+						//fmt.Println(fmt.Sprintf("%+v", res))
+						//fmt.Println("===========")
+					} else {
+						fileContent, err := os.Open(fp)
+						defer fileContent.Close()
+						if err != nil {
+							log.Fatal(err)
+							return
+						}
+						byteResult, _ := ioutil.ReadAll(fileContent)
+						//fmt.Println(string(byteResult))
+						repos[f.Name()] = string(byteResult)
+						//fmt.Println("===========")
+					}
+				}
+			}
+		}
+	}
+	//fmt.Println(fmt.Sprintf("%+v", repos))
+
+	//var result dict
+	for n, v := range repos {
+		ruleType := "javaScript:"
+		fmt.Println("=============")
+		fmt.Println(n)
+		fmt.Println("=============")
+		if strings.Contains(n, ".json") {
+			//delete:false insert:false update:true
+			name := fmt.Sprintf("%s", v.(map[string]interface{})["name"])
+			title := fmt.Sprintf("%s", v.(map[string]interface{})["title"])
+			entity := fmt.Sprintf("%s", v.(map[string]interface{})["entity"])
+			ruleType = fmt.Sprintf("%s", v.(map[string]interface{})["ruleType"])
+			isActive := fmt.Sprintf("%t", v.(map[string]interface{})["isActive"])
+			//roleToChildren (sum)
+			//errorMessage (constraint)
+			if isActive == "true" {
+				fmt.Println("Entity:", entity, "RuleType:", ruleType, "Title:", title, "Name:", name)
+				fmt.Println(v)
+			} else {fmt.Println("isActive =", isActive)}
+		} else {
+			fmt.Println(ruleType)
+			fmt.Println(v)
+		}
+	}
 }
