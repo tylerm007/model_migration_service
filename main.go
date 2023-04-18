@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,7 +13,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	//"github.com/tylerm007/fileReader/parser"
+
+	"fileReader/rules"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Config struct for webapp config
@@ -194,6 +196,7 @@ func main() {
 func ParseRules(project string, mypath string) {
 	p := fmt.Sprintf("%s/%s", mypath, project)
 	files, err := ioutil.ReadDir(p)
+	rules.Foo()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -243,9 +246,9 @@ func ParseRules(project string, mypath string) {
 	//var result dict
 	for n, v := range repos {
 		ruleType := "javaScript:"
-		fmt.Println("=============")
+		fmt.Println("```")
 		fmt.Println(n)
-		fmt.Println("=============")
+
 		if strings.Contains(n, ".json") {
 			//delete:false insert:false update:true
 			name := fmt.Sprintf("%s", v.(map[string]interface{})["name"])
@@ -258,10 +261,13 @@ func ParseRules(project string, mypath string) {
 			if isActive == "true" {
 				fmt.Println("Entity:", entity, "RuleType:", ruleType, "Title:", title, "Name:", name)
 				fmt.Println(v)
-			} else {fmt.Println("isActive =", isActive)}
+			} else {
+				fmt.Println("isActive =", isActive)
+			}
 		} else {
 			fmt.Println(ruleType)
 			fmt.Println(v)
 		}
+		fmt.Println("```")
 	}
 }
