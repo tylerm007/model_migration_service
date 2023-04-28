@@ -2,8 +2,12 @@ import os
 import json
 from pathlib import Path
 
-basepathUCF = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/UCF'
-basepath = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/demo'
+myProject = "demo"
+reposLocation = "/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis"
+#basepathUCF = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/UCF'
+#basepath = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/demo'
+basepath = f"{reposLocation}/{myProject}"
+basepathUCF = f"{reposLocation}/UCF"
 
 def listDir(path):
     if path in [".DS_Store"]:
@@ -584,5 +588,5 @@ def listDirs(path):
             
         printDir(f"{basepath}/{entry}")
         
-listDirs(basepathUCF)
+listDirs(basepath)
 #listExpanded(basepath)
