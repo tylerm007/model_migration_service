@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 
-myProject = "demo"
+myProject = "UCF"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis"
 #basepathUCF = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/UCF'
 #basepath = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/demo'
@@ -70,16 +70,19 @@ def dataSource(path):
                     if te != None:
                         print(f"  TableExcludes: {te}")
                     print("------------------------------------------------------------")
-                    for t in j["schemaCache"]["metaHolder"]["tables"]:
+                     #["metaHolder"] was prior to 5.4
+                    for t in j["schemaCache"]["tables"]:
                         print()
-                        print("create table " + t["entity"] +" (")
+                        print("create table " + t["name"] +" (")
                         sep = ""
                         for c in t["columns"]:
                             name = c["name"]
-                            autoIncr = 'AUTO_INCREMENT' if c["autoIncrement"] == True else ''
-                            baseType = c["baseType"]["dbTypeName"]
+                            autoIncr = ""
+                            if "isAutoIncrement" in c:
+                                autoIncr = 'AUTO_INCREMENT' if c["isAutoIncrement"] == True else ''
+                            baseType = c["attrTypeName"]
                                     #l = c["len"]
-                            nullable = 'not null' if c["nullable"] == False else ''
+                            nullable = '' # 'not null' if c["nullable"] == False else ''
                             print(f"   {sep}{name} {baseType} {nullable} {autoIncr}")
                             sep = ","
                         print(")")
@@ -91,10 +94,11 @@ def dataSource(path):
                             print("")
                             print(f"# PRIMARY KEY({cols})")
                             print("")
-                    for fk in j["schemaCache"]["metaHolder"]["foreignKeys"]:
-                        name = fk["entity"]
-                        parent = fk["parent"]["object"]   
-                        child = fk["child"]["object"]
+                            #["metaHolder"] was prior to 5.4
+                    for fk in j["schemaCache"]["foreignKeys"]:
+                        name = fk["name"]
+                        parent = fk["parent"]["name"]   
+                        child = fk["child"]["name"]
                         parentCol = fk["columns"][0]["parent"]
                         childCol = fk["columns"][0]["child"]
                         print("")
@@ -321,7 +325,7 @@ def fixup(str):
     newStr =  str.replace("oldRow","old_row",20)
     newStr = newStr.replace("logicContext","logic_row",20)
     newStr = newStr.replace("log.","logic_row.log.",20)
-    newStr = newStr.replace("var ","",20)
+    newStr = newStr.replace("var","",20)
     newStr = newStr.replace("//","#",200)
     newStr = newStr.replace("createPersistentBean","logic_row.new_logic_row")
     newStr = newStr.replace(";","",200)
@@ -344,11 +348,13 @@ def fixup(str):
     newStr = newStr.replace("true","True", 30)
     newStr = newStr.replace("false","False", 30)
     newStr = newStr.replace("if (","if ", 30)
+    newStr = newStr.replace("if(","if ",30)
     newStr = newStr.replace("):",":", 30)
     newStr = newStr.replace("logic_row.verb == \"INSERT\"","logic_row.is_inserted() ")
     newStr = newStr.replace("logic_row.verb == \"UPDATE\"","logic_row.is_updated()")
     newStr = newStr.replace("logic_row.verb == \"DELETE\"","logic_row.is_deleted()")
     newStr = newStr.replace("JSON.stringify","jsonify",20)
+    newStr = newStr.replace("JSON.parse","json.loads",20)
     newStr = newStr.replace("/*","'''", 20)
     newStr = newStr.replace("*/", "'''",20)
     

@@ -1,6 +1,6 @@
 # Archimedes
 
-This project reads the CALiveAPICreator repos to parse rules into objects. This can help understand how to migrate to [Api Logic Server(https://github.com/ApiLogicServer)
+This project reads the CALiveAPICreator repos to parse rules into objects. This can help understand how to migrate to [Api Logic Server Docs](https://apilogicserver.github.io/Docs/) (ALS)
 
 ## Install
 ```
