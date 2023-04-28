@@ -104,5 +104,14 @@ The resource list is user defined endpoints.  Some are nested documents shown as
 | -------------- F Product.json Entity: product Join: ("product_number" = [product_number]) Attrs: (name,price,product_number)) 
 | ----- D Products
 | ----- F Products.json Entity: product  Attrs: (name,price)) 
+```
+### safrs.JSON example:
+```
+curl -X 'GET' \
+  'http://localhost:5656/api/Customer/ALFKI/?include=OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product&fields%5BCustomer%5D=Id%2CCompanyName%2CContactName%2CContactTitle%2CAddress%2CCity%2CRegion%2CPostalCode%2CCountry%2CPhone%2CFax%2CBalance%2CCreditLimit%2COrderCount%2CUnpaidOrderCount%2CClient_id' \
+  -H 'accept: application/vnd.api+json' \
+  -H 'Content-Type: application/vnd.api+json'
 
+
+include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 ```
