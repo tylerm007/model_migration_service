@@ -78,7 +78,7 @@ def dataSource(path):
                     if te != None:
                         print(f"  TableExcludes: {te}")
                     print("------------------------------------------------------------")
-                     #["metaHolder"] was prior to 5.4
+                    #["metaHolder"] was prior to 5.4
                     for t in j["schemaCache"]["tables"]:
                         print()
                         print("create table " + t["name"] +" (")
@@ -150,7 +150,9 @@ def securityRoles(thisPath):
                     
 
 def printCols(jsonObj):
-    entity = jsonObj["entity"]
+    entity = ""
+    if jsonObj["resourceType"] == "TableBased":
+        entity = jsonObj["entity"]
     attrs = ""
     join = ""
     filter = ""
@@ -170,6 +172,18 @@ def printCols(jsonObj):
             sep = ","
         attrs = f"Attrs: ({attrs})"
     return  f"{entity} {join} {attrs}) {filter}"
+      
+def linkObjects(resList):  # sourcery skip: avoid-builtin-shadow
+    resources = []
+    # build root list first
+    for r in resList:
+        dp = r.parentName.split("/")
+        #dir = dp[len(dp) - 1]
+        isRoot = dp[len(dp) - 2] == "v1"  
+        if isRoot:
+            resources.append(r)
+        
+    return resources
                                 
 def resources(resPath):
    
@@ -177,6 +191,7 @@ def resources(resPath):
     print("       RESOURCES ")
     print("=========================")
     resources = []
+    parentPath = ""
     thisPath =  resPath + "/v1"
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split('/')
@@ -185,40 +200,26 @@ def resources(resPath):
         for f in files:
             if f in [ "ReadMe.md", ".DS_Store"]:
                 continue
-            
             fname = os.path.join(dirpath,f)
             if fname.endswith(".json"):
                 with open(fname) as myfile:
                     data = myfile.read()
                     jsonObj = json.loads(data)
-                    if jsonObj["resourceType"] == "TableBased":
-                        print ('|', len(path)*'---', 'F', f, "Entity:", printCols(jsonObj))
-                        r = ResourceObj(dirpath, jsonObj, None, None)
-                        # either add or link here
-                        r1 = findObjInPath(resources, dirpath, jsonObj["name"])
-                        if r1 == None:
-                            resources.append(r)
-                    else:
-                        print ('|', len(path)*'---', 'F', f)
+                    print ('|', len(path)*'---', 'F', f, "Entity:", printCols(jsonObj))
+                    r = ResourceObj(dirpath, jsonObj, None)
+                    # either add or link here
+                    fn = jsonObj["name"].split(".")[0] + ".sql"
+                    r.jsSQL = findInFiles(dirpath, files , fn)
+                    r.jsObj = findInFiles(dirpath, files, "get_event.js")
+                    resources.append(r)
+                    parentRes = findParent(resources, dirpath, parentPath)
+                    if parentRes != None:
+                        parentRes.childObj.append(r)
             else:
                 print ('|', len(path)*'---', 'F', f)
-            for f in files:
-                if f in [ "ReadMe.md", ".DS_Store"]:
-                    continue
-                fname = os.path.join(dirpath,f)
-                r = findObjInPath(resources, dirpath, f)
-                with open(fname) as myfile:
-                    if fname.endswith(".js"):
-                        d = fixup(myfile.read())
-                        if r != None:
-                            r.jsObj = d
-                    if fname.endswith(".sql"):
-                        d = myfile.read()
-                        if r != None:
-                            r.sqlObj = d
-                
+        parentPath = dirpath
                         
-    return resources
+    return linkObjects(resources)
             
 def printDir(resPath):
     resources = []
@@ -422,11 +423,12 @@ def findInFiles(dirpath, files, fileName):
                 return myfile.read()
     return None
     
-def findObjInList(objectList, pathName, name):
-    pn = pathName.replace(basepath+"/v1/","")
-   # nm = name.split(".")[0]
+def findParent(objectList, dirList, parentDir):
+    dl = dirList.split("/")
+    if dl[len(dl) -2] == "v1":  
+        return None #Root
     for l in objectList:
-        if l.parentName == pn:
+        if l.parentName == parentDir:
                 return l
     return None
 
@@ -438,18 +440,7 @@ def findObjInPath(objectList, pathName, name):
             if l.name == nm:
                 return l
     return None
-'''
-rules=[]
- r1 = RuleObj(jsonObj, None)
- rules.append(r1)
- r1 = findObjInList(rules, jsonObj)
- if r1 == None:
-    r1 = RuleObj(jsonObj, None)
-    rules.append(r1)
- r1.jsObj = js
- for r in rules:
-    print(r)
-'''
+
 class RuleObj:
     
     def __init__(self, jsonObj, jsObj): 
@@ -458,7 +449,7 @@ class RuleObj:
         self.ruleType = jsonObj["ruleType"]
         self.jsonObj =jsonObj
         self.jsObj = jsObj
-        #self.sqlObj = sqlObj
+        self.sqlObj = None
         
     def __str__(self):
         # switch statement for each ruleType
@@ -471,37 +462,34 @@ def printChild(self):
             
             
 class ResourceObj:
-    def __init__(self, parentName, jsonObj, jsObj, sqlObj):
+    def __init__(self, dirpath, jsonObj, jsObj):
         name = jsonObj["name"]
-        pn = parentName.replace(basepath + "/v1/","")
-        self.parentName = f"{pn}"
+        self.parentName = dirpath
         self.name = name
-        self.entity = jsonObj["entity"]
+        entity = name
+        if "entity" in jsonObj:
+            entity = jsonObj["entity"]
+        self.entity = entity
         self.ResourceType = jsonObj["resourceType"]
         self.jsonObj = jsonObj  
         self.jsObj = jsObj
-        self.sqlObj = sqlObj
-        self.childObj = None
+        self.sqlObj = None
+        self.childObj = []
+        
+    def addChildObj(co):
+        self.childObj.append(co)
     
     def __str__(self):
         # switch statement for each Resource
-        if self.childObj == None:
-            return f"Name: {self.parentName} Entity: {self.entity}"
+        if self.childObj == []:
+            return f"Name: {self.name} Entity: {self.entity}"
         else:
-            return f"     Name: {self.parentName} Entity: {self.entity} ChildName: {self.childObj.name} ChildPath: {self.childObj.parentName}"
+            return f"Name: {self.name} Entity: {self.entity} ChildName: {self.childObj[0].name}" # {print(childObj[0]) for i in childObj: print(childObj[i])}
             
-def link_objects(root):
-    for root, dirs, files in os.walk(root):
-        for file in files:
-            link = os.path.join(root, file)
-            for dir in dirs:
-                symlink = os.path.join(dir, file)
-                if not os.path.exists(symlink):
-                    print(f"{link} {symlink}")        
+     
 '''
 interested details in rules, functions, resources
 '''
-#link_objects(basepath)
 def listExpanded(path):
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split('/')
@@ -552,7 +540,13 @@ def listExpanded(path):
                 with open(fname) as myfile:
                     d = myfile.read()
                     print(d)
-
+                    
+def printChildren(child, i):
+    if len(child.childObj) > 0:
+        for c in child.childObj:
+            print((i)*'  ', c)
+            printChildren(c, i+1)
+    
 def listDirs(path):
     for entry in os.listdir(path):
         #for dirpath, dirs, files in os.walk(basepath):
@@ -565,6 +559,9 @@ def listDirs(path):
         print("=========================")
         if entry == "resources":
             resList = resources(f"{path}/{entry}")
+            for r in resList:
+                print(r)
+                printChildren(r, 0)
             continue
         
         if entry == "data_sources":
