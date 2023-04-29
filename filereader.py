@@ -9,6 +9,14 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository/teamspaces/default
 basepath = f"{reposLocation}/{myProject}"
 basepathUCF = f"{reposLocation}/UCF"
 
+def to_camel_case(text):
+    s = text.replace("-", " ").replace("_", " ")
+    s = s.split()
+    if len(text) == 0:
+        return text
+    r = s[0]+ ''.join(i.capitalize() for i in s[1:])
+    return r[:1].capitalize() + r[1:]
+
 def listDir(path):
     if path in [".DS_Store"]:
         return
@@ -115,7 +123,6 @@ def securityRoles(thisPath):
         for f in files:
             if f in [ "ReadMe.md", ".DS_Store"]:
                 continue
-           
             fname = os.path.join(dirpath,f)
             if fname.endswith(".json"):
                 with open(fname) as myfile:
@@ -252,7 +259,8 @@ def relationships(relFile):
             print(f"{roleToParent} = relationship('{parent}, remote_side=[{childColumns}] ,cascade_backrefs=True, backref='{child}')")
             print(f"{roleToChild} = relationship('{child}, remote_side=[{parentColumns}] ,cascade_backrefs=True, backref='{parent}')")
     
-def ruleTypes(j):
+def ruleTypes(ro):
+    j = ro.jsonObj
     isActive = j["isActive"]
     # No need to print inactive rules
     if isActive == False:
@@ -260,7 +268,7 @@ def ruleTypes(j):
     name = j["name"]
     entity = ""
     if "entity" in j:
-        entity = j["entity"]
+        entity = to_camel_case(j["entity"])
     ruleType = ""
     if "ruleType" in j:
         ruleType = j["ruleType"]
@@ -269,13 +277,19 @@ def ruleTypes(j):
         title = j["title"]
     funName = "fn_" + name.split(".")[0]
     comments = j["comments"]
-        
+    
+    # Define a function to use in the rule 
+    if ro.jsObj != None:
+        funName =  f"fn_{name}"
+        print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
+        print("     " + fixup(ro.jsObj))
+    
     print("'''")
+    print(f"     RuleType: {ruleType}")
     print(f"     Title: {title}")
     print(f"     Name: {name}")
     print(f"     Entity: {entity}")
     print(f"     Comments: {comments}")
-    print(f"     RuleType: {ruleType}")
     print("'''")
     if ruleType == "sum":
         attr = j["attribute"]
@@ -283,38 +297,38 @@ def ruleTypes(j):
         childAttr = j["childAttribute"]
         qualification = j["qualification"]
         if qualification != None:
-            print(f"     Rule.sum(derive=models.{entity}.{attr} as_sum_of=models.{roleToChildren}.{childAttr} where=lamda row: {qualification} )")
+            print(f"Rule.sum(derive=models.{entity}.{attr}, as_sum_of=models.{roleToChildren}.{childAttr}, where=lamda row: {qualification} )")
         else:
-            print(f"     Rule.sum(derive=models.{entity}.{attr} as_sum_of=models.{roleToChildren}.{childAttr})")
+            print(f"Rule.sum(derive=models.{entity}.{attr}, as_sum_of=models.{roleToChildren}.{childAttr})")
     elif ruleType == "formula":
         attr = j["attribute"]
         funName =  "fn_" + name.split(".")[0]
-        print(f"     Rule.formula(derive=models.{entity}.{attr} calling={funName})")
+        print(f"Rule.formula(derive=models.{entity}.{attr}, calling={funName})")
     elif ruleType == "count":
         attr = j["attribute"]
         roleToChildren = j["roleToChildren"]
         qualification = j["qualification"]
         if qualification != None:
-            print(f"     Rule.count(derive=models.{entity}.{attr} as_count_of=models.{roleToChildren} where=lamda row: {qualification} )")
+            print(f"Rule.count(derive=models.{entity}.{attr} ,as_count_of=models.{roleToChildren} , where=lamda row: {qualification} )")
         else:
-            print(f"     Rule.count(derive=models.{entity}.{attr} as_count_of=models.{roleToChildren} )")
+            print(f"Rule.count(derive=models.{entity}.{attr} ,as_count_of=models.{roleToChildren} )")
     elif ruleType == "validation":
         errorMsg = j["errorMessage"]
-        print(f"     Rule.constraint(validate=models.{entity}, calling={funName}, error_msg=\"{errorMsg}\")")
+        print(f"Rule.constraint(validate=models.{entity}, calling={funName}, error_msg=\"{errorMsg}\")")
     elif ruleType == "event":
         appliesTo = j["appliesTo"]
-        print(f"     #appliesTo: {appliesTo} ")
-        print(f"     Rule.row_event(lambda row: {name}, calling:{funName})")
+        print(f"#appliesTo: {appliesTo} ")
+        print(f"Rule.row_event(lambda row: {name}, calling:{funName})")
     elif ruleType == "commitEvent":
         appliesTo = j["appliesTo"]
-        print(f"     Rule.commit_row_event(lambda row: {name}, appliesTo: {appliesTo} calling:{funName}")
+        print(f"Rule.commit_row_event(lambda row: {name}, appliesTo: {appliesTo} calling:{funName}")
     elif ruleType == "parentCopy":
         attr = j["attribute"]
         roleToParent = j["roleToParent"]
         parentAttr = j["parentAttribute"]
-        print(f"     Rule.copy(derive=models.{entity}.{attr}, from_parent=models.{roleToParent}.{parentAttr})")
+        print(f"Rule.copy(derive=models.{entity}.{attr}, from_parent=models.{roleToParent}.{parentAttr})")
     else: 
-        print(f"     Rule.{ruleType}(...TODO...)")
+        print(f"#Rule.{ruleType}(...TODO...)")
         
     print("")
 
@@ -383,26 +397,6 @@ def rules(thisPath):
     #print("=========================")
     rules = []
     for dirpath, dirs, files in os.walk(thisPath):
-        path = dirpath.split('/')
-        for f in files:
-            if f in [ "ReadMe.md", ".DS_Store","prefixes.json","api.json", "apioptions.json"]:
-                continue
-            #print ('|', len(path)*'---', f)
-            fname = os.path.join(dirpath,f)
-            if fname.endswith(".js") | fname.endswith(".sql"):
-                with open(fname) as myfile:
-                    d = myfile.read()
-                    #print("'''")
-                    funName =  "fn_" + f.split(".")[0]
-                    entity = "ENTITY"
-                    print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
-                    print("     " + fixup(d))
-                    #print("'''")
-                    print("")
-                    if fname.endswith(".js"):
-                        r = None #findObjInList(rules, dirpath, fname.split(".")[0])
-                        if r != None:
-                            r.jsObj = fixup(d)
         for f in files:
             if f in [ "ReadMe.md", ".DS_Store","prefixes.json"]:
                 continue
@@ -412,11 +406,22 @@ def rules(thisPath):
                 with open(fname) as myfile:
                     d = myfile.read()
                     j = json.loads(d)
-                    ruleTypes(j)
+                    #ruleTypes(j)
                     r = RuleObj(j, None)
+                    fn = f.split(".")[0] + ".js"
+                    ff = findInFiles(dirpath, files, fn)
+                    r.jsObj = ff
                     rules.append(r)
     return rules
 
+def findInFiles(dirpath, files, fileName):
+    for f in files:
+        if f == fileName:
+            fname = os.path.join(dirpath,f)
+            with open(fname) as myfile:
+                return myfile.read()
+    return None
+    
 def findObjInList(objectList, pathName, name):
     pn = pathName.replace(basepath+"/v1/","")
    # nm = name.split(".")[0]
@@ -458,6 +463,7 @@ class RuleObj:
     def __str__(self):
         # switch statement for each ruleType
         return f"Name: {self.name} Entity: {self.entity} RuleType: {self.ruleType}"
+        
 
 def printChild(self):
     if self.childObj != None:
@@ -568,8 +574,9 @@ def listDirs(path):
         if entry == "rules":
             rulesList = rules(filePath)
             #Table of Contents
-            # for r in rulesList:
-            #    print(f"Entity: {r.entity}, Name: {r.name}, RuleType: {r.ruleType}")
+            for r in rulesList:
+                #print(f"Entity: {r.entity}, Name: {r.name}, RuleType: {r.ruleType}")
+                ruleTypes(r)
             continue
         
         if entry == "functions":
