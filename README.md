@@ -53,8 +53,8 @@ The datasource will generate a sample table, columns, keys, and foreign keys. No
        data_sources 
 =========================
 ------------------------------------------------------------
-Database: MySQL 
-  URL:jdbc:derby:directory:/Users/user1/mysql/Demo 
+Database: Derby 
+  URL:jdbc:derby:directory:/Users/user1/derby/Demo 
   User: DEMO Schema: DEMO
 ------------------------------------------------------------
 
@@ -83,7 +83,7 @@ Role: API Documentation TablePermission: A
 Role: Sales Rep TablePermission: N
 Role: API Owner TablePermission: A
 User: demo Roles: ['API Owner']
-User: TB Roles: ['API Owner']
+User: user1 Roles: ['API Owner']
 User: admin Roles: ['API Owner']
 ```
 
@@ -113,5 +113,29 @@ curl -X 'GET' \
   -H 'Content-Type: application/vnd.api+json'
 
 
+include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
+```
+
+### Resources are linked and nested - this becomes the basis for new endpoints (root)
+```
+@app.route('/Customers')
+def Customers:')
+       db = safrs.DB
+       customer_id = request.args.get('Id')
+       session = db.session
+       customers = session.query(models.Customers).filter(models.Customers.Id == customer_id).one()
+       result_std_dict = util.row_to_dict(customers, replace_attribute_tag='data', remove_links_relationships=True
+       return result_std_dict
+
+Name: Customers Entity: Customer  ResourceType: TableBased ChildName: data
+ Name: data Entity: OrderList  ResourceType: TableBased ChildName: data
+   Name: data Entity: OrderDetailList  ResourceType: TableBased ChildName: data
+     Name: data Entity: Product  ResourceType: TableBased 
+
+curl -X 'GET' \
+  'http://localhost:5656/api/Customers/1000/?include=OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product&fields%5BCustomer%5D=Id%2CCompanyName%2CContactName%2CContactTitle%2CAddress%2CCity%2CRegion%2CPostalCode%2CCountry%2CPhone%2CFax%2CBalance%2CCreditLimit%2COrderCount%2CUnpaidOrderCount%2CClient_id' \
+  -H 'accept: application/vnd.api+json' \
+  -H 'Content-Type: application/vnd.api+json'
+Note:
 include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 ```
