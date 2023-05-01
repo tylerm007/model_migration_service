@@ -294,7 +294,7 @@ def ruleTypes(ro):
     print("'''")
     if ruleType == "sum":
         attr = j["attribute"]
-        roleToChildren = j["roleToChildren"]
+        roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
         childAttr = j["childAttribute"]
         qualification = j["qualification"]
         if qualification != None:
@@ -307,7 +307,7 @@ def ruleTypes(ro):
         print(f"Rule.formula(derive=models.{entity}.{attr}, calling={funName})")
     elif ruleType == "count":
         attr = j["attribute"]
-        roleToChildren = j["roleToChildren"]
+        roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
         qualification = j["qualification"]
         if qualification != None:
             print(f"Rule.count(derive=models.{entity}.{attr} ,as_count_of=models.{roleToChildren} , where=lamda row: {qualification} )")
@@ -325,7 +325,7 @@ def ruleTypes(ro):
         print(f"Rule.commit_row_event(lambda row: {name}, appliesTo: {appliesTo} calling:{funName}")
     elif ruleType == "parentCopy":
         attr = j["attribute"]
-        roleToParent = j["roleToParent"]
+        roleToParent = to_camel_case(j["roleToParent"]).replace("_","")
         parentAttr = j["parentAttribute"]
         print(f"Rule.copy(derive=models.{entity}.{attr}, from_parent=models.{roleToParent}.{parentAttr})")
     else: 
@@ -415,6 +415,14 @@ def rules(thisPath):
                     rules.append(r)
     return rules
 
+def entityList(rules):
+    entityList = []
+    for r in rules:
+        entity = r.entity
+        if entity not in entityList:
+            entityList.append(entity)
+    return entityList
+    
 def findInFiles(dirpath, files, fileName):
     for f in files:
         if f == fileName:
@@ -440,7 +448,7 @@ def findObjInPath(objectList, pathName, name):
             if l.name == nm:
                 return l
     return None
-
+        
 class RuleObj:
     
     def __init__(self, jsonObj, jsObj): 
@@ -466,9 +474,9 @@ class ResourceObj:
         name = jsonObj["name"]
         self.parentName = dirpath
         self.name = name
-        entity = name
+        entity = to_camel_case(name)
         if "entity" in jsonObj:
-            entity = jsonObj["entity"]
+            entity = to_camel_case(jsonObj["entity"])
         self.entity = entity
         self.ResourceType = jsonObj["resourceType"]
         self.jsonObj = jsonObj  
@@ -482,9 +490,9 @@ class ResourceObj:
     def __str__(self):
         # switch statement for each Resource
         if self.childObj == []:
-            return f"Name: {self.name} Entity: {self.entity}"
+            return f"Name: {self.name} Entity: {self.entity} ResourceType: {self.ResourceType}"
         else:
-            return f"Name: {self.name} Entity: {self.entity} ChildName: {self.childObj[0].name}" # {print(childObj[0]) for i in childObj: print(childObj[i])}
+            return f"Name: {self.name} Entity: {self.entity}  ResourceType: {self.ResourceType} ChildName: {self.childObj[0].name}" # {print(childObj[0]) for i in childObj: print(childObj[i])}
             
      
 '''
@@ -546,7 +554,26 @@ def printChildren(child, i):
         for c in child.childObj:
             print((i)*'  ', c)
             printChildren(c, i+1)
-    
+def printResource(resList):
+      for r in resList:
+       
+        name = r.name.lower()
+        entity = r.entity
+        print("'''")
+        print(r)
+        print(f"     @app.route('/{name}')")
+        print(f"     def {name}:')")
+        print("           db = safrs.DB")
+        print(f"           {name}_id = request.args.get('Id')")
+        print("           session = db.session")
+        print(f"           {name} = session.query(models.{entity}).filter(models.{entity}.Id == {name}_id).one()")
+        print(f"           result_std_dict = util.row_to_dict({name}, replace_attribute_tag='data', remove_links_relationships=True")
+        print("           return result_std_dict")
+        
+        printChildren(r, 0)
+        print("'''")
+        print("")
+
 def listDirs(path):
     for entry in os.listdir(path):
         #for dirpath, dirs, files in os.walk(basepath):
@@ -557,23 +584,27 @@ def listDirs(path):
         print("=========================")
         print(f"       {entry} ")
         print("=========================")
+        
+        if entry == "rules":
+            rulesList = rules(filePath)
+            entities = entityList(rulesList)
+            #Table of Contents
+            for entity in entities:
+                e = to_camel_case(entity)
+                print(f"# ENTITY: {e}")
+                print("")
+                for r in rulesList:
+                    if r.entity == entity:
+                        ruleTypes(r)
+            break;
+        
         if entry == "resources":
             resList = resources(f"{path}/{entry}")
-            for r in resList:
-                print(r)
-                printChildren(r, 0)
+            printResource(resList)
             continue
         
         if entry == "data_sources":
             dataSource(filePath)
-            continue
-        
-        if entry == "rules":
-            rulesList = rules(filePath)
-            #Table of Contents
-            for r in rulesList:
-                #print(f"Entity: {r.entity}, Name: {r.name}, RuleType: {r.ruleType}")
-                ruleTypes(r)
             continue
         
         if entry == "functions":
