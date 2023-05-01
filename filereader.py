@@ -259,9 +259,14 @@ def relationships(relFile):
             #primaryjoin
             print(f"{roleToParent} = relationship('{parent}, remote_side=[{childColumns}] ,cascade_backrefs=True, backref='{child}')")
             print(f"{roleToChild} = relationship('{child}, remote_side=[{parentColumns}] ,cascade_backrefs=True, backref='{parent}')")
-    
-def ruleTypes(ro):
-    j = ro.jsonObj
+
+def ruleTypes(ruleObj):
+    """_summary_
+
+    Args:
+        RuleObj (_type_): _description_
+    """
+    j = ruleObj.jsonObj
     isActive = j["isActive"]
     # No need to print inactive rules
     if isActive == False:
@@ -278,12 +283,18 @@ def ruleTypes(ro):
         title = j["title"]
     funName = "fn_" + name.split(".")[0]
     comments = j["comments"]
+    appliesTo = ""
+    if "appliesTo" in j:
+        appliesTo = j["appliesTo"]
     
     # Define a function to use in the rule 
-    if ro.jsObj != None:
+    if ruleObj.jsObj != None:
         funName =  f"fn_{name}"
         print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
-        print("     " + fixup(ro.jsObj))
+        ## print("     if LogicRow.isInserted():")
+        if len(appliesTo) > 0:
+            print(f"     #AppliesTo: {appliesTo}")
+        print("     " + fixup(ruleObj.jsObj))
     
     print("'''")
     print(f"     RuleType: {ruleType}")
@@ -298,36 +309,51 @@ def ruleTypes(ro):
         childAttr = j["childAttribute"]
         qualification = j["qualification"]
         if qualification != None:
-            print(f"Rule.sum(derive=models.{entity}.{attr}, as_sum_of=models.{roleToChildren}.{childAttr}, where=lamda row: {qualification} )")
+            qualification = qualification.replace("!=", "is not")
+            qualification = qualification.replace("==", "is")
+            qualification = qualification.replace("null", "None")
+            print(f"Rule.sum(derive=models.{entity}.{attr}, ")
+            print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
+            print(f"         where=lambda row: {qualification} )")
         else:
-            print(f"Rule.sum(derive=models.{entity}.{attr}, as_sum_of=models.{roleToChildren}.{childAttr})")
+            print(f"Rule.sum(derive=models.{entity}.{attr},")
+            print(f"         as_sum_of=models.{roleToChildren}.{childAttr})")
     elif ruleType == "formula":
         attr = j["attribute"]
         funName =  "fn_" + name.split(".")[0]
-        print(f"Rule.formula(derive=models.{entity}.{attr}, calling={funName})")
+        print(f"Rule.formula(derive=models.{entity}.{attr},")
+        print(f"         calling={funName})")
     elif ruleType == "count":
         attr = j["attribute"]
         roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
         qualification = j["qualification"]
         if qualification != None:
-            print(f"Rule.count(derive=models.{entity}.{attr} ,as_count_of=models.{roleToChildren} , where=lamda row: {qualification} )")
+            qualification = qualification.replace("!=", "is not")
+            qualification = qualification.replace("==", "is")
+            qualification = qualification.replace("null", "None")
+            print(f"Rule.count(derive=models.{entity}.{attr},")
+            print(f"         as_count_of=models.{roleToChildren},")
+            print(f"         where=Lambda row: {qualification})")
         else:
-            print(f"Rule.count(derive=models.{entity}.{attr} ,as_count_of=models.{roleToChildren} )")
+            print(f"Rule.count(derive=models.{entity}.{attr},")
+            print(f"         as_count_of=models.{roleToChildren})")
     elif ruleType == "validation":
         errorMsg = j["errorMessage"]
-        print(f"Rule.constraint(validate=models.{entity}, calling={funName}, error_msg=\"{errorMsg}\")")
+        print(f"Rule.constraint(validate=models.{entity},")
+        print(f"         calling={funName},")
+        print(f"         error_msg=\"{errorMsg}\")")
     elif ruleType == "event":
-        appliesTo = j["appliesTo"]
-        print(f"#appliesTo: {appliesTo} ")
-        print(f"Rule.row_event(lambda row: {name}, calling:{funName})")
+        print(f"Rule.row_event(on_class=models.{entity},")
+        print(f"         calling={funName})")
     elif ruleType == "commitEvent":
-        appliesTo = j["appliesTo"]
-        print(f"Rule.commit_row_event(lambda row: {name}, appliesTo: {appliesTo} calling:{funName}")
+        print(f"Rule.commit_row_event(on_class=models.{entity},")
+        print(f"         calling={funName}")
     elif ruleType == "parentCopy":
         attr = j["attribute"]
         roleToParent = to_camel_case(j["roleToParent"]).replace("_","")
         parentAttr = j["parentAttribute"]
-        print(f"Rule.copy(derive=models.{entity}.{attr}, from_parent=models.{roleToParent}.{parentAttr})")
+        print(f"Rule.copy(derive=models.{entity}.{attr},")
+        print(f"         from_parent=models.{roleToParent}.{parentAttr})")
     else: 
         print(f"#Rule.{ruleType}(...TODO...)")
         
