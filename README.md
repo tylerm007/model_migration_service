@@ -10,9 +10,13 @@ pip install -r requirements.txt
 ```
 
 ## Run
-Modify the basepath to point to the LAC source repository and project
+point to you LAC repository home and  and project
 ```
-python3 filereader.py
+
+python3 filereader.py  {api_project_name} {lac_repos_home}
+
+MAC EXAMPLE:
+python3 filereader.py demo /Users/user1/CALiveAPICreator.repository
 ```
 
 ## Skip Sections and Files

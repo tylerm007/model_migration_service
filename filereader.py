@@ -1,13 +1,8 @@
 import os
 import json
+import sys
 from pathlib import Path
 
-myProject = "UCF"
-reposLocation = "/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis"
-#basepathUCF = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/UCF'
-#basepath = '/Users/tylerband/CALiveAPICreator.repository/teamspaces/default/apis/demo'
-basepath = f"{reposLocation}/{myProject}"
-basepathUCF = f"{reposLocation}/UCF"
 
 def to_camel_case(text):
     s = text.replace("-", " ").replace("_", " ")
@@ -205,12 +200,17 @@ def resources(resPath):
                 with open(fname) as myfile:
                     data = myfile.read()
                     jsonObj = json.loads(data)
+                    if "isActive" in jsonObj:
+                        if jsonObj["isActive"] == False:
+                            continue
                     print ('|', len(path)*'---', 'F', f, "Entity:", printCols(jsonObj))
                     r = ResourceObj(dirpath, jsonObj, None)
                     # either add or link here
                     fn = jsonObj["name"].split(".")[0] + ".sql"
                     r.jsSQL = findInFiles(dirpath, files , fn)
-                    r.jsObj = findInFiles(dirpath, files, "get_event.js")
+                    r.getJSObj = findInFiles(dirpath, files, "get_event.js")
+                    fn = jsonObj["name"].split(".")[0] + ".js"
+                    r.jsObj = findInFiles(dirpath, files, fn)
                     resources.append(r)
                     parentRes = findParent(resources, dirpath, parentPath)
                     if parentRes != None:
@@ -496,7 +496,7 @@ def printChild(self):
             
             
 class ResourceObj:
-    def __init__(self, dirpath, jsonObj, jsObj):
+    def __init__(self, dirpath, jsonObj, jsObj: any = None):
         name = jsonObj["name"]
         self.parentName = dirpath
         self.name = name
@@ -507,7 +507,9 @@ class ResourceObj:
         self.ResourceType = jsonObj["resourceType"]
         self.jsonObj = jsonObj  
         self.jsObj = jsObj
+        self.getJSObj = None
         self.sqlObj = None
+        self.isActive = True
         self.childObj = []
         
     def addChildObj(co):
@@ -582,23 +584,23 @@ def printChildren(child, i):
             printChildren(c, i+1)
 def printResource(resList):
       for r in resList:
-       
-        name = r.name.lower()
-        entity = r.entity
-        print("'''")
-        print(r)
-        print(f"     @app.route('/{name}')")
-        print(f"     def {name}:')")
-        print("           db = safrs.DB")
-        print(f"           {name}_id = request.args.get('Id')")
-        print("           session = db.session")
-        print(f"           {name} = session.query(models.{entity}).filter(models.{entity}.Id == {name}_id).one()")
-        print(f"           result_std_dict = util.row_to_dict({name}, replace_attribute_tag='data', remove_links_relationships=True")
-        print("           return result_std_dict")
-        
-        printChildren(r, 0)
-        print("'''")
-        print("")
+        if r.isActive:
+            name = r.name.lower()
+            entity = r.entity
+            print("'''")
+            print(r)
+            print(f"     @app.route('/{name}')")
+            print(f"     def {name}:')")
+            print("           db = safrs.DB")
+            print(f"           {name}_id = request.args.get('Id')")
+            print("           session = db.session")
+            print(f"           {name} = session.query(models.{entity}).filter(models.{entity}.Id == {name}_id).one()")
+            print(f"           result_std_dict = util.row_to_dict({name}, replace_attribute_tag='data', remove_links_relationships=True")
+            print("           return result_std_dict")
+            
+            printChildren(r, 0)
+            print("'''")
+            print("")
 
 def listDirs(path):
     for entry in os.listdir(path):
@@ -611,6 +613,11 @@ def listDirs(path):
         print(f"       {entry} ")
         print("=========================")
         
+        if entry == "resources":
+            resList = resources(f"{path}/{entry}")
+            printResource(resList)
+            continue
+        
         if entry == "rules":
             rulesList = rules(filePath)
             entities = entityList(rulesList)
@@ -622,12 +629,8 @@ def listDirs(path):
                 for r in rulesList:
                     if r.entity == entity:
                         ruleTypes(r)
-            break;
+            continue;
         
-        if entry == "resources":
-            resList = resources(f"{path}/{entry}")
-            printResource(resList)
-            continue
         
         if entry == "data_sources":
             dataSource(filePath)
@@ -655,5 +658,25 @@ def listDirs(path):
             
         printDir(f"{basepath}/{entry}")
         
-listDirs(basepath)
+"""
+    projectName = demo
+    reposLocation = f"{reposLocation}/{projectName}"
+ = ~/CALiveAPICreator.repository
+"""        
+projectName = "UCF"
+reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
+basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
+
+command = "not set"
+if __name__ == '__main__':
+    commands = sys.argv
+    if len(sys.argv) != 3:
+        print('\nCommand Line Arguments: python3 filereader.py projectName reposLocation')
+        listDirs(basepath) # running in debug mode - hard coded
+    else:
+        projectName = sys.argv[1]
+        reposLocation = sys.argv[2]
+        print(sys.argv)   
+        basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
+        listDirs(basepath)
 #listExpanded(basepath)
