@@ -600,33 +600,68 @@ def listExpanded(path):
                 with open(fname) as myfile:
                     d = myfile.read()
                     print(d)
-                    
-def printChildren(child, i):
-    if len(child.childObj) > 0:
-        for c in child.childObj:
-            print((i)*'  ', c)
-            printChildren(c, i+1)
+                
             
-def printResource(resList):
-      for r in resList:
+def printResource( resList):
+    space = "          "
+    for r in resList:
         if r.isActive:
             name = r.name.lower()
             entity = r.entity
-            print("'''")
-            print(r)
+            #print(f"#{r} s")
             print(f"     @app.route('/{name}')")
             print(f"     def {name}:')")
-            print("           db = safrs.DB")
-            print(f"           {name}_id = request.args.get('Id')")
-            print("           session = db.session")
-            print(f"           {name} = session.query(models.{entity}).filter(models.{entity}.Id == {name}_id).one()")
-            print(f"           result_std_dict = util.row_to_dict({name}, replace_attribute_tag='data', remove_links_relationships=True")
-            print("           return result_std_dict")
-            
-            printChildren(r, 0)
-            print("'''")
+            print(f'{space}root = Resource(models.{entity}),"{r.name}")')
+            printResAttrs(name, r)
+            if r.getJSObj is not None:
+                fn = f"fn_{r.entity}_event"
+                print(f"{space}Resource.calling({name}, {fn})")
+            printChildren(r, "root", 1)
             print("")
+            print(f'{space}key = request.args.get(root.parentKey)')
+            print(f'{space}limit = request.args.get("page_limit")')
+            print(f'{space}offset = request.args.get("page_offset")')
+            print(f'{space}result = Resource.execute(root, key, limit, offset)')
+            print('          return jsonify({"success": True, f"{root.name}": result})')
+            print("")
+            # these are the get_event.js 
+    for r in resList:
+        if r.isActive:
+            printResourceFunctions(r)
+
+def printChildren(resource, name, i):
+    if len(resource.childObj) > 0:
+        space = "          "
+        for c in resource.childObj:
+            cname = c.name.lower()
+            childName = f"{cname}_{i}"
+            print(f'{space}{childName} = Resource(models.{c.entity},"{cname}")')
+            print(f'{space}Resource.join({name},{childName})')
+            if c.getJSObj is not None:
+                fn = f"fn_{c.entity}_event"
+                print(f"{space}Resource.calling({name}, {fn})")
+            printResAttrs(name, c)
+            printChildren(c, childName, i + 1)
             
+def  printResAttrs(name, resource):
+    if resource.jsonObj is None:
+        return
+    if "attributes" in resource.jsonObj:
+        for attr in resource.jsonObj["attributes"]:
+            space = "          "
+            print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["name"]}, \"{attr["attribute"]}\")')
+
+def printResourceFunctions(r):
+    name = r.name.lower()
+    entity = r.entity
+    if r.getJSObj is not None:
+        space = "          "
+        print(f"{space}def fn_{r.entity}_event(row: any):")
+        print(fixup(r.getJSObj))
+    if r.childObj is not None:
+        for c in r.childObj:
+            printResourceFunctions(c)
+                
 def setVersion(path):
     global version
     version = "5.x"
