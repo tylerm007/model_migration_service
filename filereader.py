@@ -610,8 +610,8 @@ def printResource( resList):
             entity = r.entity
             #print(f"#{r} s")
             print(f"     @app.route('/{name}')")
-            print(f"     def {name}:')")
-            print(f'{space}root = Resource(models.{entity}),"{r.name}")')
+            print(f"     def {name}:'")
+            print(f'{space}root = Resource(models.{entity},"{r.name}")')
             printResAttrs(name, r)
             if r.getJSObj is not None:
                 fn = f"fn_{r.entity}_event"
@@ -649,7 +649,10 @@ def  printResAttrs(name, resource):
     if "attributes" in resource.jsonObj:
         for attr in resource.jsonObj["attributes"]:
             space = "          "
-            print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["name"]}, \"{attr["attribute"]}\")')
+            if version is "5.4":
+                print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["name"]}, \"{attr["attribute"]}\")')
+            else:
+                print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["attribute"]}, \"{attr["alias"]}\")')
 
 def printResourceFunctions(r):
     name = r.name.lower()
@@ -736,7 +739,7 @@ def listDirs(path):
     reposLocation = f"{reposLocation}/{projectName}"
  = ~/CALiveAPICreator.repository
 """        
-projectName = "UCF" #"UCF"
+projectName = "demo" #"UCF"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
 version = "5.4"
