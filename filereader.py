@@ -606,6 +606,7 @@ def printChildren(child, i):
         for c in child.childObj:
             print((i)*'  ', c)
             printChildren(c, i+1)
+            
 def printResource(resList):
       for r in resList:
         if r.isActive:
@@ -625,13 +626,15 @@ def printResource(resList):
             printChildren(r, 0)
             print("'''")
             print("")
+            
 def setVersion(path):
     global version
+    version = "5.x"
     for dirpath, dirs, files in os.walk(path):
-        if os.path.basename(dirpath) == "pipeline":
+        if os.path.basename(dirpath) == "pipeline_events":
             version = "5.4"
             break;
-    version = "5.x"
+   
     
 
 def listDirs(path):
@@ -698,7 +701,7 @@ def listDirs(path):
     reposLocation = f"{reposLocation}/{projectName}"
  = ~/CALiveAPICreator.repository
 """        
-projectName = "demo" #"UCF"
+projectName = "UCF" #"UCF"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
 version = "5.4"
