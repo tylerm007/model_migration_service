@@ -74,17 +74,28 @@ def dataSource(path):
                         print(f"  TableExcludes: {te}")
                     print("------------------------------------------------------------")
                     #["metaHolder"] was prior to 5.4
-                    for t in j["schemaCache"]["tables"]:
+                    if version == "5.4":
+                        tables = j["schemaCache"]["tables"]
+                    else:
+                        tables = j["schemaCache"]["metaHolder"]["tables"]
+                    for t in tables:
                         print()
-                        print("create table " + t["name"] +" (")
+                        if version == "5.4":
+                            name = t["name"]
+                        else:
+                            name = t["entity"]
+                        print("create table " + name +" (")
                         sep = ""
                         for c in t["columns"]:
                             name = c["name"]
                             autoIncr = ""
                             if "isAutoIncrement" in c:
                                 autoIncr = 'AUTO_INCREMENT' if c["isAutoIncrement"] == True else ''
-                            baseType = c["attrTypeName"]
-                                    #l = c["len"]
+                            if version == "5.4":
+                                baseType = c["attrTypeName"]
+                            else:
+                                baseType = c["baseTypeName"]
+                            #l = c["len"]
                             nullable = '' # 'not null' if c["nullable"] == False else ''
                             print(f"   {sep}{name} {baseType} {nullable} {autoIncr}")
                             sep = ","
@@ -98,10 +109,23 @@ def dataSource(path):
                             print(f"# PRIMARY KEY({cols})")
                             print("")
                             #["metaHolder"] was prior to 5.4
-                    for fk in j["schemaCache"]["foreignKeys"]:
-                        name = fk["name"]
-                        parent = fk["parent"]["name"]   
-                        child = fk["child"]["name"]
+                    if version == "5.4":
+                        fkeys = j["schemaCache"]["foreignKeys"]
+                    else:
+                        fkeys = j["schemaCache"]["metaHolder"]["foreignKeys"]
+                    for fk in fkeys:
+                        if version == "5.4":
+                            name = fk["name"]
+                        else:
+                            name = fk["entity"]
+                        if version == "5.4":
+                            parent = fk["parent"]["name"]   
+                        else:
+                            parent = fk["parent"]["object"]  
+                        if version == "5.4":
+                            child = fk["child"]["name"]
+                        else:
+                            child = fk["child"]["object"]
                         parentCol = fk["columns"][0]["parent"]
                         childCol = fk["columns"][0]["child"]
                         print("")
@@ -601,8 +625,19 @@ def printResource(resList):
             printChildren(r, 0)
             print("'''")
             print("")
+def setVersion(path):
+    global version
+    for dirpath, dirs, files in os.walk(path):
+        if os.path.basename(dirpath) == "pipeline":
+            version = "5.4"
+            break;
+    version = "5.x"
+    
 
 def listDirs(path):
+
+    setVersion(path)
+    print(version)
     for entry in os.listdir(path):
         #for dirpath, dirs, files in os.walk(basepath):
         if entry in ["api.json", "topics", "sorts","issues.json", "apioptions.json","filters", "timers", "exportoptions.json", ".DS_Store"]:
@@ -663,15 +698,15 @@ def listDirs(path):
     reposLocation = f"{reposLocation}/{projectName}"
  = ~/CALiveAPICreator.repository
 """        
-projectName = "UCF"
+projectName = "demo" #"UCF"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
-
+version = "5.4"
 command = "not set"
 if __name__ == '__main__':
     commands = sys.argv
     if len(sys.argv) != 3:
-        print('\nCommand Line Arguments: python3 filereader.py projectName reposLocation')
+        print('\nCommand Line Arguments: python3 filereader.py apiProjectName LACReposLocation')
         listDirs(basepath) # running in debug mode - hard coded
     else:
         projectName = sys.argv[1]
@@ -679,4 +714,3 @@ if __name__ == '__main__':
         print(sys.argv)   
         basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
         listDirs(basepath)
-#listExpanded(basepath)
