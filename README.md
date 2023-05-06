@@ -97,17 +97,14 @@ The resource list is user defined endpoints.  Some are nested documents shown as
 =========================
        RESOURCES 
 =========================
-| -- D v1
-| ----- D Customers
-| ----- F Customers.json Entity: customer  Attrs: (name,balance,credit_limit)) 
-| -------- D Orders
-| -------- F Orders.json Entity: PurchaseOrder Join: ("customer_name" = [name]) Attrs: (order_number,amount_total,paid,notes)) 
-| ----------- D LineItems
-| ----------- F LineItems.json Entity: LineItem Join: ("order_number" = [order_number]) Attrs: (product_number,order_number,qty_ordered,product_price,amount)) 
-| -------------- D Product
-| -------------- F Product.json Entity: product Join: ("product_number" = [product_number]) Attrs: (name,price,product_number)) 
-| ----- D Products
-| ----- F Products.json Entity: product  Attrs: (name,price)) 
+| --- D Customers
+| --- F Customers.json Entity: customer  Attrs: (name,balance,credit_limit) 
+| ------ D Orders
+| ------ F Orders.json Entity: PurchaseOrder Join: ("customer_name" = [name]) Attrs: (order_number,amount_total,paid,notes)
+| --------- D LineItems
+| --------- F LineItems.json Entity: LineItem Join: ("order_number" = [order_number]) Attrs: (product_number,order_number,qty_ordered ,product_price,amount)
+| ------------ D Product
+| ------------ F Product.json Entity: product Join: ("product_number" = [product_number]) Attrs: (name,price,product_number)
 ```
 ### safrs.JSON example:
 ```
@@ -122,19 +119,39 @@ include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 
 ### Resources are linked and nested - this becomes the basis for new endpoints (root)
 ```
-@app.route('/Customers')
-def Customers:')
-       db = safrs.DB
-       customer_id = request.args.get('Id')
-       session = db.session
-       customers = session.query(models.Customers).filter(models.Customers.Id == customer_id).one()
-       result_std_dict = util.row_to_dict(customers, replace_attribute_tag='data', remove_links_relationships=True
-       return result_std_dict
+@app.route('/customers')
+def customers():
+       root = Resource(models.Customer,"Customers")
+       Resource.alias(customers,models.Customer.name, "Name")
+       Resource.alias(customers,models.Customer.balance, "Balance")
+       Resource.alias(customers,models.Customer.credit_limit, "CreditLimit")
+       
+       orders_1 = Resource(models.PurchaseOrder,"orders")
+       Resource.join(root, orders_1, models.PurchaseOrder.CustomerName)
+       Resource.alias(root,models.PurchaseOrder.order_number, "OrderNumber")
+       Resource.alias(root,models.PurchaseOrder.amount_total, "TotalAmount")
+       Resource.alias(root,models.PurchaseOrder.paid, "Paid")
+       Resource.alias(root,models.PurchaseOrder.notes, "Notes")
 
-Name: Customers Entity: Customer  ResourceType: TableBased ChildName: data
- Name: data Entity: OrderList  ResourceType: TableBased ChildName: data
-   Name: data Entity: OrderDetailList  ResourceType: TableBased ChildName: data
-     Name: data Entity: Product  ResourceType: TableBased 
+       lineitems_2 = Resource(models.LineItem,"lineitems")
+       Resource.join(orders_1, lineitems_2, models.LineItem.OrderNumber)
+       Resource.alias(orders_1,models.LineItem.product_number, "ProductNumber")
+       Resource.alias(orders_1,models.LineItem.order_number, "OrderNumber")
+       Resource.alias(orders_1,models.LineItem.qty_ordered, "Quantity")
+       Resource.alias(orders_1,models.LineItem.product_price, "Price")
+       Resource.alias(orders_1,models.LineItem.amount, "Amount")
+
+       product_3 = Resource(models.Product,"product")
+       Resource.joinParent(lineitems_2, product_3, models.Product.ProductNumber)
+       Resource.alias(lineitems_2,models.Product.name, "Name")
+       Resource.alias(lineitems_2,models.Product.price, "Price")
+       Resource.alias(lineitems_2,models.Product.product_number, "ProductId")
+
+       key = request.args.get(root.parentKey)
+       limit = request.args.get("page_limit")
+       offset = request.args.get("page_offset")
+       result = Resource.execute(root, key, limit, offset)
+       return jsonify({"success": True, f"{root.name}": result})
 
 curl -X 'GET' \
   'http://localhost:5656/api/Customers/1000/?include=OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product&fields%5BCustomer%5D=Id%2CCompanyName%2CContactName%2CContactTitle%2CAddress%2CCity%2CRegion%2CPostalCode%2CCountry%2CPhone%2CFax%2CBalance%2CCreditLimit%2COrderCount%2CUnpaidOrderCount%2CClient_id' \
