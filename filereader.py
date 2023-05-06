@@ -4,15 +4,15 @@ import sys
 from pathlib import Path
 
 
-def to_camel_case(text):
+def to_camel_case(text: str):
     s = text.replace("-", " ").replace("_", " ")
     s = s.split()
-    if len(text) == 0:
-        return text
+    if text is None:
+        return ""
     r = s[0]+ ''.join(i.capitalize() for i in s[1:])
     return r[:1].capitalize() + r[1:]
 
-def listDir(path):
+def listDir(path: os.path):
     if path in [".DS_Store"]:
         return
     for entry in os.listdir(path):
@@ -23,7 +23,7 @@ def listDir(path):
                     if d not in [".DS_Store"]:
                         listFiles(os.path.join(path, entry)+"/"+d)
 
-def listFiles(path):
+def listFiles(path: os.path):
     if path in [".DS_Store"]:
         return
     with os.scandir(path) as entries:
@@ -44,7 +44,7 @@ def listFiles(path):
                     if entry.is_dir:
                         listDir(os.path.join(path, entry.name)) 
                 '''
-def dataSource(path):
+def dataSource(path: os.path):
     #print("=========================")
     #print("        SQL Tables ")
     #print("=========================")
@@ -79,7 +79,7 @@ def dataSource(path):
                     else:
                         tables = j["schemaCache"]["metaHolder"]["tables"]
                     for t in tables:
-                        print()
+                        print("")
                         if version == "5.4":
                             name = t["name"]
                         else:
@@ -132,10 +132,10 @@ def dataSource(path):
                         print(f"  ALTER TABLE ADD CONSTRAINT fk_{name} FOREIGN KEY {child}({childCol}) REFERENCES {parent}({parentCol})")
                         print("")
 
-def resourceType(j):
-    print(j)      
+def resourceType(resource: object):
+    print(resource)      
     
-def securityRoles(thisPath):    
+def securityRoles(thisPath: str):    
     path = f"{thisPath}/roles"
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split('/')
@@ -168,10 +168,8 @@ def securityRoles(thisPath):
                     print(f"User: {name} Roles: {roles}")
                     
 
-def printCols(jsonObj):
-    entity = ""
-    if jsonObj["resourceType"] == "TableBased":
-        entity = jsonObj["entity"]
+def printCols(jsonObj: object):
+    entity = "" if jsonObj["resourceType"] != "TableBased" else jsonObj["entity"]
     attrs = ""
     join = ""
     filter = ""
@@ -192,7 +190,7 @@ def printCols(jsonObj):
         attrs = f"Attrs: ({attrs})"
     return  f"{entity} {join} {attrs}) {filter}"
       
-def linkObjects(resList):  # sourcery skip: avoid-builtin-shadow
+def linkObjects(resList: object):  # sourcery skip: avoid-builtin-shadow
     resources = []
     # build root list first
     for r in resList:
@@ -204,7 +202,7 @@ def linkObjects(resList):  # sourcery skip: avoid-builtin-shadow
         
     return resources
                                 
-def resources(resPath):
+def resources(resPath: str):
    
     print("=========================")
     print("       RESOURCES ")
@@ -245,11 +243,19 @@ def resources(resPath):
                         
     return linkObjects(resources)
             
-def printDir(resPath):
-    resources = []
+def printDir(resPath: os.path):
+    """_summary_
+
+    Args:
+        resPath (os.path): _description_
+
+    Returns:
+        _type_: _description_
+    """
     thisPath =  resPath
     rootLen = len(thisPath.split("/")) + 1
     lastParent = ""
+    resources = []
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split('/')
         parent = path[len(path)- 1]
@@ -266,7 +272,7 @@ def printDir(resPath):
                                 
     return resources
 
-def relationships(relFile):
+def relationships(relFile: str):
     print("=========================")
     print("    RELATIONSHIPS ")
     print("=========================")
@@ -284,11 +290,11 @@ def relationships(relFile):
             print(f"{roleToParent} = relationship('{parent}, remote_side=[{childColumns}] ,cascade_backrefs=True, backref='{child}')")
             print(f"{roleToChild} = relationship('{child}, remote_side=[{parentColumns}] ,cascade_backrefs=True, backref='{parent}')")
 
-def ruleTypes(ruleObj):
+def ruleTypes(ruleObj: object):
     """_summary_
 
     Args:
-        RuleObj (_type_): _description_
+        RuleObj (object): _description_
     """
     j = ruleObj.jsonObj
     isActive = j["isActive"]
@@ -426,7 +432,7 @@ def fixup(str):
     # SysUtility ???
     return newStr.replace("log.debug(","log(",20)
 
-def functionList(thisPath):
+def functionList(thisPath: str):
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split('/')
         for f in files:
@@ -465,7 +471,7 @@ def rules(thisPath):
                     rules.append(r)
     return rules
 
-def entityList(rules):
+def entityList(rules: object):
     entityList = []
     for r in rules:
         entity = r.entity
@@ -520,6 +526,9 @@ def printChild(self):
             
             
 class ResourceObj:
+    """_summary_
+    RsourceObj is the container for all Repository objects (json, js, sql)
+    """
     def __init__(self, dirpath, jsonObj, jsObj: any = None):
         name = jsonObj["name"]
         self.parentName = dirpath
@@ -550,7 +559,7 @@ class ResourceObj:
 '''
 interested details in rules, functions, resources
 '''
-def listExpanded(path):
+def listExpanded(path: str):
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split('/')
         if os.path.basename(dirpath) in [ "filters", "request_events", "sorts" "timers","request_events"]:
@@ -603,14 +612,14 @@ def listExpanded(path):
                 
             
 def printResource( resList):
-    space = "          "
+    space = "        "
     for r in resList:
         if r.isActive:
             name = r.name.lower()
             entity = r.entity
             #print(f"#{r} s")
-            print(f"     @app.route('/{name}')")
-            print(f"     def {name}:'")
+            print(f"    @app.route('/{name}')")
+            print(f"    def {name}():")
             print(f'{space}root = Resource(models.{entity},"{r.name}")')
             printResAttrs(name, r)
             if r.getJSObj is not None:
@@ -622,60 +631,85 @@ def printResource( resList):
             print(f'{space}limit = request.args.get("page_limit")')
             print(f'{space}offset = request.args.get("page_offset")')
             print(f'{space}result = Resource.execute(root, key, limit, offset)')
-            print('          return jsonify({"success": True, f"{root.name}": result})')
+            print('        return jsonify({"success": True, f"{root.name}": result})')
             print("")
             # these are the get_event.js 
     for r in resList:
         if r.isActive:
             printResourceFunctions(r)
 
-def printChildren(resource, name, i):
-    if len(resource.childObj) > 0:
-        space = "          "
-        for c in resource.childObj:
-            cname = c.name.lower()
-            childName = f"{cname}_{i}"
-            print(f'{space}{childName} = Resource(models.{c.entity},"{cname}")')
-            print(f'{space}Resource.join({name},{childName})')
-            if c.getJSObj is not None:
-                fn = f"fn_{c.entity}_event"
-                print(f"{space}Resource.calling({name}, {fn})")
-            printResAttrs(name, c)
-            printChildren(c, childName, i + 1)
+def printChildren(resource: object, name: str, i: int):
+    if len(resource.childObj) <= 0:
+        return
+    space = "        "
+    for c in resource.childObj:
+        cname = c.name.lower()
+        childName = f"{cname}_{i}"
+        print(f'{space}{childName} = Resource(models.{c.entity},"{cname}")')
+        attrName = findAttrName(c)
+        if attrName is not None:
+            joinType = "join" if c.jsonObj["isCollection"] is True  else "joinParent"
+            if joinType == "joinParent":
+                print(f'{space}Resource.{joinType}({name}, {childName}, models.{c.entity}.{attrName[1]})')
+            else:
+                print(f'{space}Resource.{joinType}({name}, {childName}, models.{c.entity}.{attrName[0]})')
+        if c.getJSObj is not None:
+            fn = f"fn_{c.entity}_event"
+            print(f"{space}Resource.calling({name}, {fn})")
+        printResAttrs(name, c)
+        printChildren(c, childName, i + 1)
             
-def  printResAttrs(name, resource):
+def  printResAttrs(name: str, resource: object):
     if resource.jsonObj is None:
         return
     if "attributes" in resource.jsonObj:
         for attr in resource.jsonObj["attributes"]:
-            space = "          "
-            if version is "5.4":
+            space = "        "
+            if version == "5.4":
                 print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["name"]}, \"{attr["attribute"]}\")')
             else:
                 print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["attribute"]}, \"{attr["alias"]}\")')
 
-def printResourceFunctions(r):
-    name = r.name.lower()
-    entity = r.entity
-    if r.getJSObj is not None:
+def printResourceFunctions(resource: object):
+    name = resource.name.lower()
+    entity = resource.entity
+    if resource.getJSObj is not None:
         space = "          "
-        print(f"{space}def fn_{r.entity}_event(row: any):")
-        print(fixup(r.getJSObj))
-    if r.childObj is not None:
-        for c in r.childObj:
+        print(f"{space}def fn_{resource.entity}_event(row: any):")
+        print(fixup(resource.getJSObj))
+    if resource.childObj is not None:
+        for c in resource.childObj:
             printResourceFunctions(c)
+            
+def findAttrName(resourceObj: object):
+    if resourceObj.ResourceType == "TableBased":
+       join = resourceObj.jsonObj["join"]
+       if join is not None:
+            ret = []
+            join = join.replace("\"","",10)
+            join = join.replace("[","")
+            join = join.replace("]","")
+            join = join.replace(" ","",4)
+            for j in join.split("="):
+                ret.append(to_camel_case(j))
+            return ret
                 
-def setVersion(path):
+                
+
+def setVersion(path: os.path):
     global version
-    version = "5.x"
-    for dirpath, dirs, files in os.walk(path):
-        if os.path.basename(dirpath) == "pipeline_events":
-            version = "5.4"
-            break;
+    version = next(
+        (
+            "5.4"
+            for dirpath, dirs, files in os.walk(path)
+            if os.path.basename(dirpath) == "pipeline_events"
+        ),
+        "5.x",
+    )
    
     
 
-def listDirs(path):
+def listDirs(path: os.path):
 
     setVersion(path)
     print(version)
@@ -739,19 +773,22 @@ def listDirs(path):
     reposLocation = f"{reposLocation}/{projectName}"
  = ~/CALiveAPICreator.repository
 """        
+apiroot = "teamspaces/default/apis"
 projectName = "demo" #"UCF"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
-basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
+basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
+
 if __name__ == '__main__':
     commands = sys.argv
     if len(sys.argv) != 3:
         print('\nCommand Line Arguments: python3 filereader.py apiProjectName LACReposLocation')
-        listDirs(basepath) # running in debug mode - hard coded
+    
     else:
         projectName = sys.argv[1]
         reposLocation = sys.argv[2]
         print(sys.argv)   
-        basepath = f"{reposLocation}/teamspaces/default/apis/{projectName}"
-        listDirs(basepath)
+        basepath = f"{reposLocation}/{apiroot}/{projectName}"
+    
+    listDirs(basepath)
