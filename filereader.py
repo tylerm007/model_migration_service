@@ -621,11 +621,11 @@ def printResource( resList):
             print(f"    @app.route('/{name}')")
             print(f"    def {name}():")
             print(f'{space}root = Resource(models.{entity},"{r.name}")')
-            printResAttrs(name, r)
+            printResAttrs("root", r)
             if r.getJSObj is not None:
                 fn = f"fn_{r.entity}_event"
-                print(f"{space}Resource.calling({name}, {fn})")
-            printChildren(r, "root", 1)
+                print(f"{space}Resource.calling(\"root\", {fn})")
+            printChildren(r,"root", 1)
             print("")
             print(f'{space}key = request.args.get(root.parentKey)')
             print(f'{space}limit = request.args.get("page_limit")')
@@ -638,26 +638,27 @@ def printResource( resList):
         if r.isActive:
             printResourceFunctions(r)
 
-def printChildren(resource: object, name: str, i: int):
-    if len(resource.childObj) <= 0:
-        return
+def printChildren(resource: object,parent_name: str, i: int):
     space = "        "
-    for c in resource.childObj:
-        cname = c.name.lower()
+    for child in resource.childObj:
+        cname = child.name
         childName = f"{cname}_{i}"
-        print(f'{space}{childName} = Resource(models.{c.entity},"{cname}")')
-        attrName = findAttrName(c)
+        print("")
+        print(f'{space}{childName} = Resource(models.{child.entity},"{cname}")')
+        printResAttrs(childName, child)
+        attrName = findAttrName(child)
         if attrName is not None:
-            joinType = "join" if c.jsonObj["isCollection"] is True  else "joinParent"
+            joinType = "join" if child.jsonObj["isCollection"] is True  else "joinParent"
             if joinType == "joinParent":
-                print(f'{space}Resource.{joinType}({name}, {childName}, models.{c.entity}.{attrName[1]})')
+                print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[1]})')
             else:
-                print(f'{space}Resource.{joinType}({name}, {childName}, models.{c.entity}.{attrName[0]})')
-        if c.getJSObj is not None:
-            fn = f"fn_{c.entity}_event"
-            print(f"{space}Resource.calling({name}, {fn})")
-        printResAttrs(name, c)
-        printChildren(c, childName, i + 1)
+                print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[0]})')
+        if child.getJSObj is not None:
+            fn = f"fn_{child.entity}_event"
+            print(f"{space}Resource.calling({childName}, {fn})")
+       
+        printChildren(child, childName, i + 1)
+       
             
 def  printResAttrs(name: str, resource: object):
     if resource.jsonObj is None:
@@ -666,9 +667,11 @@ def  printResAttrs(name: str, resource: object):
         for attr in resource.jsonObj["attributes"]:
             space = "        "
             if version == "5.4":
-                print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["name"]}, \"{attr["attribute"]}\")')
+                attrName = attr["attribute"]
             else:
-                print(f'{space}Resource.alias({name},models.{resource.entity}.{attr["attribute"]}, \"{attr["alias"]}\")')
+                attrName = attr["alias"]
+                
+            print(f'{space}Resource.alias({name},models.{resource.entity}.{attrName}, \"{attrName}\")')
 
 def printResourceFunctions(resource: object):
     name = resource.name.lower()
@@ -691,7 +694,7 @@ def findAttrName(resourceObj: object):
             join = join.replace("]","")
             join = join.replace(" ","",4)
             for j in join.split("="):
-                ret.append(to_camel_case(j))
+                ret.append(j)
             return ret
                 
                 
@@ -774,7 +777,7 @@ def listDirs(path: os.path):
  = ~/CALiveAPICreator.repository
 """        
 apiroot = "teamspaces/default/apis"
-projectName = "demo" #"UCF"
+projectName = "UCF" #"UCF"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
