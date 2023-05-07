@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 
-def to_camel_case(text: str):
+def to_camel_case(text: str = None):
     s = text.replace("-", " ").replace("_", " ")
     s = s.split()
     if text is None:
@@ -12,7 +12,7 @@ def to_camel_case(text: str):
     r = s[0]+ ''.join(i.capitalize() for i in s[1:])
     return r[:1].capitalize() + r[1:]
 
-def listDir(path: os.path):
+def listDir(path: Path):
     if path in [".DS_Store"]:
         return
     for entry in os.listdir(path):
@@ -23,7 +23,7 @@ def listDir(path: os.path):
                     if d not in [".DS_Store"]:
                         listFiles(os.path.join(path, entry)+"/"+d)
 
-def listFiles(path: os.path):
+def listFiles(path: Path):
     if path in [".DS_Store"]:
         return
     with os.scandir(path) as entries:
@@ -44,7 +44,7 @@ def listFiles(path: os.path):
                     if entry.is_dir:
                         listDir(os.path.join(path, entry.name)) 
                 '''
-def dataSource(path: os.path):
+def dataSource(path: Path):
     #print("=========================")
     #print("        SQL Tables ")
     #print("=========================")
@@ -138,7 +138,7 @@ def dataSource(path: os.path):
 def resourceType(resource: object):
     print(resource)      
     
-def securityRoles(thisPath: str):    
+def securityRoles(thisPath):    
     path = f"{thisPath}/roles"
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split('/')
@@ -246,11 +246,11 @@ def resources(resPath: str):
                         
     return linkObjects(resources)
             
-def printDir(resPath: os.path):
+def printDir(resPath: Path):
     """_summary_
 
     Args:
-        resPath (os.path): _description_
+        resPath (Path): _description_
 
     Returns:
         _type_: _description_
@@ -294,7 +294,7 @@ def relationships(relFile: str):
             print(f"{roleToChild} = relationship('{child}, remote_side=[{parentColumns}] ,cascade_backrefs=True, backref='{parent}')")
 
 def ruleTypes(ruleObj: object):
-    """_summary_
+    """
 
     Args:
         RuleObj (object): _description_
@@ -321,7 +321,8 @@ def ruleTypes(ruleObj: object):
         appliesTo = j["appliesTo"]
     
     # Define a function to use in the rule 
-    if ruleObj.jsObj != None:
+    ruleJSObj = None if ruleObj.jsObj is None else fixup(ruleObj.jsObj)
+    if ruleJSObj is not None:
         funName =  f"fn_{name}"
         print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
         ## print("     if LogicRow.isInserted():")
@@ -341,21 +342,22 @@ def ruleTypes(ruleObj: object):
         roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
         childAttr = j["childAttribute"]
         qualification = j["qualification"]
+        print(f"Rule.sum(derive=models.{entity}.{attr}, ")
+        print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
         if qualification != None:
             qualification = qualification.replace("!=", "is not")
             qualification = qualification.replace("==", "is")
             qualification = qualification.replace("null", "None")
-            print(f"Rule.sum(derive=models.{entity}.{attr}, ")
-            print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
             print(f"         where=lambda row: {qualification} )")
-        else:
-            print(f"Rule.sum(derive=models.{entity}.{attr},")
-            print(f"         as_sum_of=models.{roleToChildren}.{childAttr})")
     elif ruleType == "formula":
         attr = j["attribute"]
         funName =  "fn_" + name.split(".")[0]
         print(f"Rule.formula(derive=models.{entity}.{attr},")
-        print(f"         calling={funName})")
+        if ruleJSObj is not None and len(ruleJSObj) > 80:
+            print(f"         calling={funName})")
+        else:
+            ruleJSObj = ruleJSObj.replace("return","lambda row: ")
+            print(f"         as_expression={ruleJSObj})")
     elif ruleType == "count":
         attr = j["attribute"]
         roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
@@ -396,6 +398,8 @@ def ruleTypes(ruleObj: object):
 Convert JavaScript LAC to ALS Python
 '''
 def fixup(str):
+    if str is None:
+        return str
     newStr =  str.replace("oldRow","old_row",20)
     newStr = newStr.replace("logicContext","logic_row",20)
     newStr = newStr.replace("log.","logic_row.log.",20)
@@ -714,7 +718,7 @@ def findAttrName(resourceObj: object):
                 ret.append(j)
             return ret
 
-def setVersion(path: os.path):
+def setVersion(path: Path):
     global version
     version = next(
         (
@@ -727,7 +731,7 @@ def setVersion(path: os.path):
    
     
 
-def listDirs(path: os.path):
+def listDirs(path: Path):
 
     setVersion(path)
     print(version)
