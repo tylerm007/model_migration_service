@@ -48,6 +48,7 @@ def dataSource(path: os.path):
     #print("=========================")
     #print("        SQL Tables ")
     #print("=========================")
+    tableList = []
     with os.scandir(path) as entries:
         for f in entries:
             if f in [ "ReadMe.md", ".DS_Store"]:
@@ -80,10 +81,8 @@ def dataSource(path: os.path):
                         tables = j["schemaCache"]["metaHolder"]["tables"]
                     for t in tables:
                         print("")
-                        if version == "5.4":
-                            name = t["name"]
-                        else:
-                            name = t["entity"]
+                        name = t["name"] if version == "5.4" else t["entity"]
+                        tableList.append(name)
                         print("create table " + name +" (")
                         sep = ""
                         for c in t["columns"]:
@@ -131,6 +130,10 @@ def dataSource(path: os.path):
                         print("")
                         print(f"  ALTER TABLE ADD CONSTRAINT fk_{name} FOREIGN KEY {child}({childCol}) REFERENCES {parent}({parentCol})")
                         print("")
+        # TODO print curl test for root table API endpoints
+        for tbl in tableList:
+            print(f"curl -X 'GET' http://localhost:5656/{tbl}")
+            print("")
 
 def resourceType(resource: object):
     print(resource)      
@@ -610,7 +613,16 @@ def listExpanded(path: str):
                     d = myfile.read()
                     print(d)
                 
-            
+def printCurlTests(resList):
+    print("")
+    print("CURL TESTS")
+    for r in resList:
+        if r.isActive:
+            name = r.name.lower()
+            entity = r.entity
+            print(f"curl -X 'GET' http://localhost:5656/{name}")
+            print("")
+    
 def printResource( resList):
     space = "        "
     for r in resList:
@@ -622,9 +634,7 @@ def printResource( resList):
             print(f"    def {name}():")
             print(f'{space}root = Resource(models.{entity},"{r.name}")')
             printResAttrs("root", r)
-            if r.getJSObj is not None:
-                fn = f"fn_{r.entity}_event"
-                print(f"{space}Resource.calling(\"root\", {fn})")
+            printGetFunc("root", r)
             printChildren(r,"root", 1)
             print("")
             print(f'{space}key = request.args.get(root.parentKey)')
@@ -650,12 +660,10 @@ def printChildren(resource: object,parent_name: str, i: int):
         if attrName is not None:
             joinType = "join" if child.jsonObj["isCollection"] is True  else "joinParent"
             if joinType == "joinParent":
-                print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[1]})')
+                print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]})')
             else:
                 print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[0]})')
-        if child.getJSObj is not None:
-            fn = f"fn_{child.entity}_event"
-            print(f"{space}Resource.calling({childName}, {fn})")
+        printGetFunc(childName, child)
        
         printChildren(child, childName, i + 1)
        
@@ -673,16 +681,25 @@ def  printResAttrs(name: str, resource: object):
                 
             print(f'{space}Resource.alias({name},models.{resource.entity}.{attrName}, \"{attrName}\")')
 
+def printGetFunc(name: str, res: object):
+    if res.getJSObj is not None:
+        space = "        "
+        fn = f"fn_{res.entity}_event"
+        print(f"{space}Resource.calling({name}, {fn})")
+        
 def printResourceFunctions(resource: object):
     name = resource.name.lower()
     entity = resource.entity
     if resource.getJSObj is not None:
         space = "          "
-        print(f"{space}def fn_{resource.entity}_event(row: any):")
-        print(fixup(resource.getJSObj))
+        print(f"{space}def fn_{entity}_event(row: any):")
+        print(f"{space}{space}pass")
+        print("'''")
+        print(f"{space}" + fixup(resource.getJSObj))
+        print("'''")
     if resource.childObj is not None:
-        for c in resource.childObj:
-            printResourceFunctions(c)
+        for child in resource.childObj:
+            printResourceFunctions(child)
             
 def findAttrName(resourceObj: object):
     if resourceObj.ResourceType == "TableBased":
@@ -696,8 +713,6 @@ def findAttrName(resourceObj: object):
             for j in join.split("="):
                 ret.append(j)
             return ret
-                
-                
 
 def setVersion(path: os.path):
     global version
@@ -729,6 +744,7 @@ def listDirs(path: os.path):
         if entry == "resources":
             resList = resources(f"{path}/{entry}")
             printResource(resList)
+            printCurlTests(resList)
             continue
         
         if entry == "rules":
@@ -777,7 +793,7 @@ def listDirs(path: os.path):
  = ~/CALiveAPICreator.repository
 """        
 apiroot = "teamspaces/default/apis"
-projectName = "UCF" #"UCF"
+projectName = "demo"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
