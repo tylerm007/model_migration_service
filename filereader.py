@@ -130,9 +130,10 @@ def dataSource(path: Path):
                         print("")
                         print(f"  ALTER TABLE ADD CONSTRAINT fk_{name} FOREIGN KEY {child}({childCol}) REFERENCES {parent}({parentCol})")
                         print("")
-        # TODO print curl test for root table API endpoints
+        # print curl test for root table API endpoints
         for tbl in tableList:
-            print(f"curl -X 'GET' http://localhost:5656/{tbl}")
+            print(f"ECHO calling endpoint: {tbl}")
+            print(f"curl -X 'GET' \"http://localhost:5656/{tbl}\"")
             print("")
 
 def resourceType(resource: object):
@@ -624,7 +625,8 @@ def printCurlTests(resList):
         if r.isActive:
             name = r.name.lower()
             entity = r.entity
-            print(f"curl -X 'GET' http://localhost:5656/{name}")
+            print(f"ECHO {name}")
+            print(f"curl -X 'GET' \"http://localhost:5656/{name}\"")
             print("")
     
 def printResource( resList):
