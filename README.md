@@ -123,44 +123,47 @@ include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 
 ### Resources are linked and nested - this becomes the basis for new endpoints (root)
 ```
-@app.route('/customers')
-def customers():
-       root = Resource(models.Customer,"Customers")
-       Resource.alias(customers,models.Customer.name, "Name")
-       Resource.alias(customers,models.Customer.balance, "Balance")
-       Resource.alias(customers,models.Customer.credit_limit, "CreditLimit")
-       
-       orders_1 = Resource(models.PurchaseOrder,"orders")
-       Resource.join(root, orders_1, models.PurchaseOrder.CustomerName)
-       Resource.alias(root,models.PurchaseOrder.order_number, "OrderNumber")
-       Resource.alias(root,models.PurchaseOrder.amount_total, "TotalAmount")
-       Resource.alias(root,models.PurchaseOrder.paid, "Paid")
-       Resource.alias(root,models.PurchaseOrder.notes, "Notes")
+    @app.route('/customers')
+    def customers():
+        root = Resource(models.Customer,"Customers")
+        Resource.alias(root,models.Customer.Name, "Name")
+        Resource.alias(root,models.Customer.Balance, "Balance")
+        Resource.alias(root,models.Customer.CreditLimit, "CreditLimit")
+        Resource.calling(root, myGetFunction)
 
-       lineitems_2 = Resource(models.LineItem,"lineitems")
-       Resource.join(orders_1, lineitems_2, models.LineItem.OrderNumber)
-       Resource.alias(orders_1,models.LineItem.product_number, "ProductNumber")
-       Resource.alias(orders_1,models.LineItem.order_number, "OrderNumber")
-       Resource.alias(orders_1,models.LineItem.qty_ordered, "Quantity")
-       Resource.alias(orders_1,models.LineItem.product_price, "Price")
-       Resource.alias(orders_1,models.LineItem.amount, "Amount")
+        Orders_1 = Resource(models.PurchaseOrder,"Orders")
+        Resource.alias(Orders_1,models.PurchaseOrder.OrderNumber, "OrderNumber")
+        Resource.alias(Orders_1,models.PurchaseOrder.TotalAmount, "TotalAmount")
+        Resource.alias(Orders_1,models.PurchaseOrder.Paid, "Paid")
+        Resource.alias(Orders_1,models.PurchaseOrder.Notes, "Notes")
+        Resource.join(root, Orders_1, models.PurchaseOrder.customer_name)
 
-       product_3 = Resource(models.Product,"product")
-       Resource.joinParent(lineitems_2, product_3, models.Product.ProductNumber)
-       Resource.alias(lineitems_2,models.Product.name, "Name")
-       Resource.alias(lineitems_2,models.Product.price, "Price")
-       Resource.alias(lineitems_2,models.Product.product_number, "ProductId")
+        LineItems_2 = Resource(models.LineItem,"LineItems")
+        Resource.alias(LineItems_2,models.LineItem.ProductNumber, "ProductNumber")
+        Resource.alias(LineItems_2,models.LineItem.OrderNumber, "OrderNumber")
+        Resource.alias(LineItems_2,models.LineItem.Quantity, "Quantity")
+        Resource.alias(LineItems_2,models.LineItem.Price, "Price")
+        Resource.alias(LineItems_2,models.LineItem.Amount, "Amount")
+        Resource.join(Orders_1, LineItems_2, models.LineItem.order_number)
 
-       key = request.args.get(root.parentKey)
-       limit = request.args.get("page_limit")
-       offset = request.args.get("page_offset")
-       result = Resource.execute(root, key, limit, offset)
-       return jsonify({"success": True, f"{root.name}": result})
+        Product_3 = Resource(models.Product,"Product")
+        Resource.alias(Product_3,models.Product.Name, "Name")
+        Resource.alias(Product_3,models.Product.Price, "Price")
+        Resource.alias(Product_3,models.Product.ProductId, "ProductId")
+        Resource.joinParent(LineItems_2, Product_3, models.LineItem.product_number)
+
+        key = request.args.get(root.parentKey)
+        limit = request.args.get("page_limit")
+        offset = request.args.get("page_offset")
+        result = Resource.execute(root, key, limit, offset)
+        return jsonify({"success": True, f"{root.name}": result})
+
+    def myGetFunction(row: any):
+       row["myVirtualAttribute"] = "foo"
 
 curl -X 'GET' \
-  'http://localhost:5656/api/Customers/1000/?include=OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product&fields%5BCustomer%5D=Id%2CCompanyName%2CContactName%2CContactTitle%2CAddress%2CCity%2CRegion%2CPostalCode%2CCountry%2CPhone%2CFax%2CBalance%2CCreditLimit%2COrderCount%2CUnpaidOrderCount%2CClient_id' \
+  'http://localhost:5656/api/Customers?Name=ALFKI/
   -H 'accept: application/vnd.api+json' \
   -H 'Content-Type: application/vnd.api+json'
-Note:
-include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
+
 ```
