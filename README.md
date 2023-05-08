@@ -4,6 +4,8 @@ This project reads the CALiveAPICreator repos to parse rules into objects. This 
 
 ## Install
 ```
+git clone https://github.com/tylerm007/fileReader.git
+cd fileReader
 python3 install venv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
@@ -12,6 +14,8 @@ pip install -r requirements.txt
 ## Run
 point to you LAC repository home and  and project
 ```
+api_project_name=demo
+lac_repos_home=/{install}/CALiveAPICreator.repository
 
 python3 filereader.py  {api_project_name} {lac_repos_home}
 
