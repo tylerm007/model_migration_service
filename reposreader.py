@@ -586,7 +586,7 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-sections = "resources" # all is default
+sections = "all" # all is default
 
 # The above code is a common Python idiom that checks if the current script is being run as the main
 # program or if it is being imported as a module into another program. If it is being run as the main

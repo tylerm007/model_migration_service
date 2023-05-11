@@ -35,6 +35,7 @@ def fixup(str):
     newStr = newStr.replace("}else{","else:", 20)
     newStr = newStr.replace("null","None",40)
     newStr = newStr.replace("===","==",40)
+    newStr = newStr.replace("!==","!=", 20)
     newStr = newStr.replace("}","",40)
     newStr = newStr.replace("else  if ","elif", 20)
     newStr = newStr.replace("true","True", 30)
@@ -50,9 +51,15 @@ def fixup(str):
     newStr = newStr.replace("/*","'''", 20)
     newStr = newStr.replace("*/", "'''",20)
     newStr = newStr.replace("try {","try:", 10)
-    newStr = newStr.replace("catch(e):","except Exception:", 5)
+    newStr = newStr.replace("catch(e):","except Exception as ex:", 5)
     newStr = newStr.replace("try{","try:", 10)
-    newStr = newStr.replace("catch(","except Exception:", 5)
+    newStr = newStr.replace("catch(","except Exception as ex:", 5)
     # SysUtility ???
     return newStr.replace("log.debug(","log(",20)
 
+if __name__ == "__main__":
+    js = ""
+    print(fixup(js))
+    
+    js = 'var theRaise = parameters.percentRaise * (row.Salary/100); \nrow.Salary += theRaise;\n  // runs logic, persists change row(s) to database...return [ {"status": "Success"}, {"raise": theRaise} ]; \n//  , {"row": row.toString()}  ];'
+    print(fixup(js))
