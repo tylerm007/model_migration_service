@@ -15,7 +15,7 @@ pip install -r requirements.txt
 point to you LAC repository home and  and select the project name from the list of 'apis'. The optional sections will only print the directory named.
 ```
 api_project_name=demo
-lac_repos_home=/{install}/CALiveAPICreator.repository
+lac_repos_home=/{home}/CALiveAPICreator.repository
 sections=all | [rules,resources,...] optional
 
 python3 filereader.py  {api_project_name} {lac_repos_home} [{sections}]
@@ -111,14 +111,14 @@ The resource list is user defined endpoints.  Some are nested documents shown as
 | ------------ D Product
 | ------------ F Product.json Entity: product Join: ("product_number" = [product_number]) Attrs: (name,price,product_number)
 ```
-### safrs.JSON example:
+### safrs.JSON API example:
 ```
 curl -X 'GET' \
   'http://localhost:5656/api/Customer/ALFKI/?include=OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product&fields%5BCustomer%5D=Id%2CCompanyName%2CContactName%2CContactTitle%2CAddress%2CCity%2CRegion%2CPostalCode%2CCountry%2CPhone%2CFax%2CBalance%2CCreditLimit%2COrderCount%2CUnpaidOrderCount%2CClient_id' \
   -H 'accept: application/vnd.api+json' \
   -H 'Content-Type: application/vnd.api+json'
 
-
+Note: entities following relationships
 include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 ```
 

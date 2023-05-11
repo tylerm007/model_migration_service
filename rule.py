@@ -2,13 +2,15 @@ from util import to_camel_case, fixup
 
 class RuleObj:
     
-    def __init__(self, jsonObj, jsObj): 
+    def __init__(self, jsonObj: object, jsObj: str = None, sqlObj: str = None): 
+        if not jsonObj:
+            raise ValueError("RuleObj(jsonObj) JSON Object required")
         self.name = jsonObj["name"]
         self.entity = jsonObj["entity"]
         self.ruleType = jsonObj["ruleType"]
         self.jsonObj =jsonObj
         self.jsObj = jsObj
-        self.sqlObj = None
+        self.sqlObj = sqlObj
         
     def __str__(self):
         # switch statement for each ruleType
@@ -59,59 +61,60 @@ class RuleObj:
         print(f"     Entity: {entity}")
         print(f"     Comments: {comments}")
         print("'''")
-        if ruleType == "sum":
-            attr = j["attribute"]
-            roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
-            childAttr = j["childAttribute"]
-            qualification = j["qualification"]
-            print(f"Rule.sum(derive=models.{entity}.{attr}, ")
-            print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
-            if qualification != None:
-                qualification = qualification.replace("!=", "is not")
-                qualification = qualification.replace("==", "is")
-                qualification = qualification.replace("null", "None")
-                print(f"         where=lambda row: {qualification} )")
-        elif ruleType == "formula":
-            attr = j["attribute"]
-            funName =  "fn_" + name.split(".")[0]
-            print(f"Rule.formula(derive=models.{entity}.{attr},")
-            if ruleJSObj is not None and len(ruleJSObj) > 80:
+        match ruleType:
+            case "sum":
+                attr = j["attribute"]
+                roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
+                childAttr = j["childAttribute"]
+                qualification = j["qualification"]
+                print(f"Rule.sum(derive=models.{entity}.{attr}, ")
+                print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
+                if qualification != None:
+                    qualification = qualification.replace("!=", "is not")
+                    qualification = qualification.replace("==", "is")
+                    qualification = qualification.replace("null", "None")
+                    print(f"         where=lambda row: {qualification} )")
+            case "formula":
+                attr = j["attribute"]
+                funName =  "fn_" + name.split(".")[0]
+                print(f"Rule.formula(derive=models.{entity}.{attr},")
+                if ruleJSObj is not None and len(ruleJSObj) > 80:
+                    print(f"         calling={funName})")
+                else:
+                    ruleJSObj = ruleJSObj.replace("return","lambda row: ")
+                    print(f"         as_expression={ruleJSObj})")
+            case "count":
+                attr = j["attribute"]
+                roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
+                qualification = j["qualification"]
+                if qualification != None:
+                    qualification = qualification.replace("!=", "is not")
+                    qualification = qualification.replace("==", "is")
+                    qualification = qualification.replace("null", "None")
+                    print(f"Rule.count(derive=models.{entity}.{attr},")
+                    print(f"         as_count_of=models.{roleToChildren},")
+                    print(f"         where=Lambda row: {qualification})")
+                else:
+                    print(f"Rule.count(derive=models.{entity}.{attr},")
+                    print(f"         as_count_of=models.{roleToChildren})")
+            case "validation":
+                errorMsg = j["errorMessage"]
+                print(f"Rule.constraint(validate=models.{entity},")
+                print(f"         calling={funName},")
+                print(f"         error_msg=\"{errorMsg}\")")
+            case "event":
+                print(f"Rule.row_event(on_class=models.{entity},")
                 print(f"         calling={funName})")
-            else:
-                ruleJSObj = ruleJSObj.replace("return","lambda row: ")
-                print(f"         as_expression={ruleJSObj})")
-        elif ruleType == "count":
-            attr = j["attribute"]
-            roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
-            qualification = j["qualification"]
-            if qualification != None:
-                qualification = qualification.replace("!=", "is not")
-                qualification = qualification.replace("==", "is")
-                qualification = qualification.replace("null", "None")
-                print(f"Rule.count(derive=models.{entity}.{attr},")
-                print(f"         as_count_of=models.{roleToChildren},")
-                print(f"         where=Lambda row: {qualification})")
-            else:
-                print(f"Rule.count(derive=models.{entity}.{attr},")
-                print(f"         as_count_of=models.{roleToChildren})")
-        elif ruleType == "validation":
-            errorMsg = j["errorMessage"]
-            print(f"Rule.constraint(validate=models.{entity},")
-            print(f"         calling={funName},")
-            print(f"         error_msg=\"{errorMsg}\")")
-        elif ruleType == "event":
-            print(f"Rule.row_event(on_class=models.{entity},")
-            print(f"         calling={funName})")
-        elif ruleType == "commitEvent":
-            print(f"Rule.commit_row_event(on_class=models.{entity},")
-            print(f"         calling={funName}")
-        elif ruleType == "parentCopy":
-            attr = j["attribute"]
-            roleToParent = to_camel_case(j["roleToParent"]).replace("_","")
-            parentAttr = j["parentAttribute"]
-            print(f"Rule.copy(derive=models.{entity}.{attr},")
-            print(f"         from_parent=models.{roleToParent}.{parentAttr})")
-        else: 
-            print(f"#Rule.{ruleType}(...TODO...)")
+            case "commitEvent":
+                print(f"Rule.commit_row_event(on_class=models.{entity},")
+                print(f"         calling={funName}")
+            case "parentCopy":
+                attr = j["attribute"]
+                roleToParent = to_camel_case(j["roleToParent"]).replace("_","")
+                parentAttr = j["parentAttribute"]
+                print(f"Rule.copy(derive=models.{entity}.{attr},")
+                print(f"         from_parent=models.{roleToParent}.{parentAttr})")
+            case _: 
+                print(f"#Rule.{ruleType}(...TODO...)")
             
         print("")

@@ -607,7 +607,7 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-sections = "all"
+sections = "rules"
 
 if __name__ == '__main__':
     commands = sys.argv
