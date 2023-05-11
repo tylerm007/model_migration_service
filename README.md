@@ -12,15 +12,16 @@ pip install -r requirements.txt
 ```
 
 ## Run
-point to you LAC repository home and  and project
+point to you LAC repository home and  and select the project name from the list of 'apis'. The optional sections will only print the directory named.
 ```
 api_project_name=demo
 lac_repos_home=/{install}/CALiveAPICreator.repository
+sections=all | [rules,resources,...] optional
 
-python3 filereader.py  {api_project_name} {lac_repos_home}
+python3 filereader.py  {api_project_name} {lac_repos_home} [{sections}]
 
 MAC EXAMPLE:
-python3 filereader.py demo /Users/user1/CALiveAPICreator.repository
+python3 filereader.py demo /Users/user1/CALiveAPICreator.repository rules
 ```
 
 ## Skip Sections and Files

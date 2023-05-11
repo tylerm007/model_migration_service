@@ -2,15 +2,20 @@ import os
 import json
 import sys
 from pathlib import Path
+from rule import RuleObj
+from resourceobj import ResourceObj
+from util import to_camel_case, fixup
 
-
-def to_camel_case(text: str = None):
-    s = text.replace("-", " ").replace("_", " ")
-    s = s.split()
-    if text is None:
-        return ""
-    r = s[0]+ ''.join(i.capitalize() for i in s[1:])
-    return r[:1].capitalize() + r[1:]
+def setVersion(path: Path):
+    global version
+    version = next(
+        (
+            "5.4"
+            for dirpath, dirs, files in os.walk(path)
+            if os.path.basename(dirpath) == "pipeline_events"
+        ),
+        "5.x",
+    )
 
 def listDir(path: Path):
     if path in [".DS_Store"]:
@@ -21,7 +26,7 @@ def listDir(path: Path):
             if entry not in [".DS_Store"]:
                 for d in os.listdir(os.path.join(path, entry)):
                     if d not in [".DS_Store"]:
-                        listFiles(os.path.join(path, entry)+"/"+d)
+                        listFiles(f"{os.path.join(path, entry)}/{d}")
 
 def listFiles(path: Path):
     if path in [".DS_Store"]:
@@ -75,25 +80,19 @@ def dataSource(path: Path):
                         print(f"  TableExcludes: {te}")
                     print("------------------------------------------------------------")
                     #["metaHolder"] was prior to 5.4
-                    if version == "5.4":
-                        tables = j["schemaCache"]["tables"]
-                    else:
-                        tables = j["schemaCache"]["metaHolder"]["tables"]
+                    tables = j["schemaCache"]["tables"] if version == "5.4"  else j["schemaCache"]["metaHolder"]["tables"]
                     for t in tables:
                         print("")
                         name = t["name"] if version == "5.4" else t["entity"]
                         tableList.append(name)
-                        print("create table " + name +" (")
+                        print(f"create table {schema}.{name} (")
                         sep = ""
                         for c in t["columns"]:
                             name = c["name"]
                             autoIncr = ""
                             if "isAutoIncrement" in c:
                                 autoIncr = 'AUTO_INCREMENT' if c["isAutoIncrement"] == True else ''
-                            if version == "5.4":
-                                baseType = c["attrTypeName"]
-                            else:
-                                baseType = c["baseTypeName"]
+                            baseType = c["attrTypeName"] if version == "5.4" else c["baseTypeName"]
                             #l = c["len"]
                             nullable = '' # 'not null' if c["nullable"] == False else ''
                             print(f"   {sep}{name} {baseType} {nullable} {autoIncr}")
@@ -194,7 +193,7 @@ def printCols(jsonObj: object):
         attrs = f"Attrs: ({attrs})"
     return  f"{entity} {join} {attrs}) {filter}"
       
-def linkObjects(resList: object):  # sourcery skip: avoid-builtin-shadow
+def linkObjects(resList: object): 
     resources = []
     # build root list first
     for r in resList:
@@ -208,9 +207,9 @@ def linkObjects(resList: object):  # sourcery skip: avoid-builtin-shadow
                                 
 def resources(resPath: str):
    
-    print("=========================")
-    print("       RESOURCES ")
-    print("=========================")
+    #print("=========================")
+    #print("       RESOURCES ")
+    #print("=========================")
     resources = []
     parentPath = ""
     thisPath =  resPath + "/v1"
@@ -230,17 +229,17 @@ def resources(resPath: str):
                         if jsonObj["isActive"] == False:
                             continue
                     print ('|', len(path)*'---', 'F', f, "Entity:", printCols(jsonObj))
-                    r = ResourceObj(dirpath, jsonObj, None)
+                    resObj = ResourceObj(dirpath, jsonObj, None)
                     # either add or link here
                     fn = jsonObj["name"].split(".")[0] + ".sql"
-                    r.jsSQL = findInFiles(dirpath, files , fn)
-                    r.getJSObj = findInFiles(dirpath, files, "get_event.js")
+                    resObj.jsSQL = findInFiles(dirpath, files , fn)
+                    resObj.getJSObj = findInFiles(dirpath, files, "get_event.js")
                     fn = jsonObj["name"].split(".")[0] + ".js"
-                    r.jsObj = findInFiles(dirpath, files, fn)
-                    resources.append(r)
+                    resObj.jsObj = findInFiles(dirpath, files, fn)
+                    resources.append(resObj)
                     parentRes = findParent(resources, dirpath, parentPath)
                     if parentRes != None:
-                        parentRes.childObj.append(r)
+                        parentRes.childObj.append(resObj)
             else:
                 print ('|', len(path)*'---', 'F', f)
         parentPath = dirpath
@@ -277,9 +276,9 @@ def printDir(resPath: Path):
     return resources
 
 def relationships(relFile: str):
-    print("=========================")
-    print("    RELATIONSHIPS ")
-    print("=========================")
+    #print("=========================")
+    #print("    RELATIONSHIPS ")
+    #print("=========================")
     with open(relFile) as myfile:
         d = myfile.read()
         js = json.loads(d)
@@ -294,152 +293,6 @@ def relationships(relFile: str):
             print(f"{roleToParent} = relationship('{parent}, remote_side=[{childColumns}] ,cascade_backrefs=True, backref='{child}')")
             print(f"{roleToChild} = relationship('{child}, remote_side=[{parentColumns}] ,cascade_backrefs=True, backref='{parent}')")
 
-def ruleTypes(ruleObj: object):
-    """
-
-    Args:
-        RuleObj (object): _description_
-    """
-    j = ruleObj.jsonObj
-    isActive = j["isActive"]
-    # No need to print inactive rules
-    if isActive == False:
-        return
-    name = j["name"]
-    entity = ""
-    if "entity" in j:
-        entity = to_camel_case(j["entity"])
-    ruleType = ""
-    if "ruleType" in j:
-        ruleType = j["ruleType"]
-    title =""
-    if "title" in j:
-        title = j["title"]
-    funName = "fn_" + name.split(".")[0]
-    comments = j["comments"]
-    appliesTo = ""
-    if "appliesTo" in j:
-        appliesTo = j["appliesTo"]
-    
-    # Define a function to use in the rule 
-    ruleJSObj = None if ruleObj.jsObj is None else fixup(ruleObj.jsObj)
-    if ruleJSObj is not None:
-        funName =  f"fn_{name}"
-        print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
-        ## print("     if LogicRow.isInserted():")
-        if len(appliesTo) > 0:
-            print(f"     #AppliesTo: {appliesTo}")
-        print("     " + fixup(ruleObj.jsObj))
-    
-    print("'''")
-    print(f"     RuleType: {ruleType}")
-    print(f"     Title: {title}")
-    print(f"     Name: {name}")
-    print(f"     Entity: {entity}")
-    print(f"     Comments: {comments}")
-    print("'''")
-    if ruleType == "sum":
-        attr = j["attribute"]
-        roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
-        childAttr = j["childAttribute"]
-        qualification = j["qualification"]
-        print(f"Rule.sum(derive=models.{entity}.{attr}, ")
-        print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
-        if qualification != None:
-            qualification = qualification.replace("!=", "is not")
-            qualification = qualification.replace("==", "is")
-            qualification = qualification.replace("null", "None")
-            print(f"         where=lambda row: {qualification} )")
-    elif ruleType == "formula":
-        attr = j["attribute"]
-        funName =  "fn_" + name.split(".")[0]
-        print(f"Rule.formula(derive=models.{entity}.{attr},")
-        if ruleJSObj is not None and len(ruleJSObj) > 80:
-            print(f"         calling={funName})")
-        else:
-            ruleJSObj = ruleJSObj.replace("return","lambda row: ")
-            print(f"         as_expression={ruleJSObj})")
-    elif ruleType == "count":
-        attr = j["attribute"]
-        roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
-        qualification = j["qualification"]
-        if qualification != None:
-            qualification = qualification.replace("!=", "is not")
-            qualification = qualification.replace("==", "is")
-            qualification = qualification.replace("null", "None")
-            print(f"Rule.count(derive=models.{entity}.{attr},")
-            print(f"         as_count_of=models.{roleToChildren},")
-            print(f"         where=Lambda row: {qualification})")
-        else:
-            print(f"Rule.count(derive=models.{entity}.{attr},")
-            print(f"         as_count_of=models.{roleToChildren})")
-    elif ruleType == "validation":
-        errorMsg = j["errorMessage"]
-        print(f"Rule.constraint(validate=models.{entity},")
-        print(f"         calling={funName},")
-        print(f"         error_msg=\"{errorMsg}\")")
-    elif ruleType == "event":
-        print(f"Rule.row_event(on_class=models.{entity},")
-        print(f"         calling={funName})")
-    elif ruleType == "commitEvent":
-        print(f"Rule.commit_row_event(on_class=models.{entity},")
-        print(f"         calling={funName}")
-    elif ruleType == "parentCopy":
-        attr = j["attribute"]
-        roleToParent = to_camel_case(j["roleToParent"]).replace("_","")
-        parentAttr = j["parentAttribute"]
-        print(f"Rule.copy(derive=models.{entity}.{attr},")
-        print(f"         from_parent=models.{roleToParent}.{parentAttr})")
-    else: 
-        print(f"#Rule.{ruleType}(...TODO...)")
-        
-    print("")
-
-'''
-Convert JavaScript LAC to ALS Python
-'''
-def fixup(str):
-    if str is None:
-        return str
-    newStr =  str.replace("oldRow","old_row",20)
-    newStr = newStr.replace("logicContext","logic_row",20)
-    newStr = newStr.replace("log.","logic_row.log.",20)
-    newStr = newStr.replace("var","",20)
-    newStr = newStr.replace("//","#",200)
-    newStr = newStr.replace("createPersistentBean","logic_row.new_logic_row")
-    newStr = newStr.replace(";","",200)
-    newStr = newStr.replace("?"," if ",400)
-    newStr = newStr.replace(":"," else ",400)
-    newStr = newStr.replace("} else {","else:", 100)
-    newStr = newStr.replace("}else {","else:", 100)
-    newStr = newStr.replace(") {","):",40)
-    newStr = newStr.replace("){","):",40)
-    newStr = newStr.replace("function ","def ",40)
-    newStr = newStr.replace("} else if","elif ")
-    newStr = newStr.replace("}else if","elif ",20)
-    newStr = newStr.replace("||","or",20)
-    newStr = newStr.replace("&&","and",20)
-    newStr = newStr.replace("}else{","else:", 20)
-    newStr = newStr.replace("null","None",40)
-    newStr = newStr.replace("===","==",40)
-    newStr = newStr.replace("}","",40)
-    newStr = newStr.replace("else  if ","elif", 20)
-    newStr = newStr.replace("true","True", 30)
-    newStr = newStr.replace("false","False", 30)
-    newStr = newStr.replace("if (","if ", 30)
-    newStr = newStr.replace("if(","if ",30)
-    #newStr = newStr.replace("):",":", 30)
-    newStr = newStr.replace("logic_row.verb == \"INSERT\"","logic_row.is_inserted() ")
-    newStr = newStr.replace("logic_row.verb == \"UPDATE\"","logic_row.is_updated()")
-    newStr = newStr.replace("logic_row.verb == \"DELETE\"","logic_row.is_deleted()")
-    newStr = newStr.replace("JSON.stringify","jsonify",20)
-    newStr = newStr.replace("JSON.parse","json.loads",20)
-    newStr = newStr.replace("/*","'''", 20)
-    newStr = newStr.replace("*/", "'''",20)
-    
-    # SysUtility ???
-    return newStr.replace("log.debug(","log(",20)
-
 def functionList(thisPath: str):
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split('/')
@@ -453,7 +306,7 @@ def functionList(thisPath: str):
                     #print("'''")
                     funName =  "fn_" + f.split(".")[0]
                     print(f"def {funName}:")
-                    print("     " + fixup(d))
+                    print(f"     {fixup(d)}")
     
     
 def rules(thisPath):
@@ -469,14 +322,13 @@ def rules(thisPath):
             fname = os.path.join(dirpath,f)
             if fname.endswith(".json"):
                 with open(fname) as myfile:
-                    d = myfile.read()
-                    j = json.loads(d)
-                    #ruleTypes(j)
-                    r = RuleObj(j, None)
+                    data = myfile.read()
+                    jsonData = json.loads(data)
+                    rule = RuleObj(jsonData, None)
                     fn = f.split(".")[0] + ".js"
-                    ff = findInFiles(dirpath, files, fn)
-                    r.jsObj = ff
-                    rules.append(r)
+                    javaScriptFile = findInFiles(dirpath, files, fn)
+                    rule.jsObj = javaScriptFile
+                    rules.append(rule)
     return rules
 
 def entityList(rules: object):
@@ -499,60 +351,20 @@ def findParent(objectList, dirList, parentDir):
     dl = dirList.split("/")
     if dl[len(dl) -2] == "v1":  
         return None #Root
-    for l in objectList:
-        if l.parentName == parentDir:
-                return l
-    return None
+    return next((l for l in objectList if l.parentName == parentDir), None)
 
 def findObjInPath(objectList, pathName, name):
-    pn = pathName.replace(basepath+"/v1/","")
+    pn = pathName.replace(f"{basepath}/v1/", "")
     nm = name.split(".")[0]
-    for l in objectList:
-        if l.parentName == pn:
-            if l.name == nm:
-                return l
-    return None
-        
-class RuleObj:
-    
-    def __init__(self, jsonObj, jsObj): 
-        self.name = jsonObj["name"]
-        self.entity = jsonObj["entity"]
-        self.ruleType = jsonObj["ruleType"]
-        self.jsonObj =jsonObj
-        self.jsObj = jsObj
-        self.sqlObj = None
-        
-    def __str__(self):
-        # switch statement for each ruleType
-        return f"Name: {self.name} Entity: {self.entity} RuleType: {self.ruleType}"
+    return next(
+        (l for l in objectList if l.parentName == pn and l.name == nm), None
+    )
         
 
 def printChild(self):
     if self.childObj != None:
             print (f"     Name: {self.parentName} Entity: {self.entity} ChildName: {self.childObj.name} ChildPath: {self.childObj.parentName}")
             
-            
-class ResourceObj:
-    """_summary_
-    RsourceObj is the container for all Repository objects (json, js, sql)
-    """
-    def __init__(self, dirpath, jsonObj, jsObj: any = None):
-        name = jsonObj["name"]
-        self.parentName = dirpath
-        self.name = name
-        entity = to_camel_case(name)
-        if "entity" in jsonObj:
-            entity = to_camel_case(jsonObj["entity"])
-        self.entity = entity
-        self.ResourceType = jsonObj["resourceType"]
-        self.jsonObj = jsonObj  
-        self.jsObj = jsObj
-        self.getJSObj = None
-        self.sqlObj = None
-        self.isActive = True
-        self.childObj = []
-        
     def addChildObj(co):
         self.childObj.append(co)
     
@@ -563,7 +375,6 @@ class ResourceObj:
         else:
             return f"Name: {self.name} Entity: {self.entity}  ResourceType: {self.ResourceType} ChildName: {self.childObj[0].name}" # {print(childObj[0]) for i in childObj: print(childObj[i])}
             
-     
 '''
 interested details in rules, functions, resources
 '''
@@ -638,7 +449,7 @@ def printResource( resList):
             #print(f"#{r} s")
             print(f"    @app.route('/{name}')")
             print(f"    def {name}():")
-            print(f'{space}root = Resource(models.{entity},"{r.name}")')
+            print(f'{space}root = Resource.create(models.{entity},"{r.name}")')
             printResAttrs("root", r)
             printGetFunc("root", r)
             printChildren(r,"root", 1)
@@ -666,7 +477,8 @@ def printChildren(resource: object,parent_name: str, i: int):
         if attrName is not None:
             joinType = "join" if child.jsonObj["isCollection"] is True  else "joinParent"
             if joinType == "joinParent":
-                print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]})')
+                isCombined = "True" if child.jsonObj["isCombined"] is True  else "False"
+                print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]}, {isCombined})')
             else:
                 print(f'{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[0]})')
         printGetFunc(childName, child)
@@ -719,32 +531,23 @@ def findAttrName(resourceObj: object):
             for j in join.split("="):
                 ret.append(j)
             return ret
+ 
 
-def setVersion(path: Path):
-    global version
-    version = next(
-        (
-            "5.4"
-            for dirpath, dirs, files in os.walk(path)
-            if os.path.basename(dirpath) == "pipeline_events"
-        ),
-        "5.x",
-    )
-   
-    
-
-def listDirs(path: Path):
+def listDirs(path: Path, section: str = "all"):
 
     setVersion(path)
     print(version)
     for entry in os.listdir(path):
         #for dirpath, dirs, files in os.walk(basepath):
-        if entry in ["api.json", "topics", "sorts","issues.json", "apioptions.json","filters", "timers", "exportoptions.json", ".DS_Store"]:
-            continue
+        if section.lower() != "all" and entry != section:
+                continue
+       
         filePath = f"{path}/{entry}"
+        if entry in ["api.json", "issues.json", "apioptions.json", "exportoptions.json", ".DS_Store"]:
+            continue
         print("")
         print("=========================")
-        print(f"       {entry} ")
+        print(f"       {entry.upper()} ")
         print("=========================")
         
         if entry == "resources":
@@ -758,13 +561,13 @@ def listDirs(path: Path):
             entities = entityList(rulesList)
             #Table of Contents
             for entity in entities:
-                e = to_camel_case(entity)
-                print(f"# ENTITY: {e}")
+                entityName = to_camel_case(entity)
+                print(f"# ENTITY: {entityName}")
                 print("")
-                for r in rulesList:
-                    if r.entity == entity:
-                        ruleTypes(r)
-            continue;
+                for rule in rulesList:
+                    if rule.entity == entity:
+                        RuleObj.ruleTypes(rule)
+            continue
         
         
         if entry == "data_sources":
@@ -804,16 +607,20 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
+sections = "all"
 
 if __name__ == '__main__':
     commands = sys.argv
-    if len(sys.argv) != 3:
-        print('\nCommand Line Arguments: python3 filereader.py apiProjectName LACReposLocation')
+    if len(sys.argv) < 3:
+        print('\nCommand Line Arguments: python3 filereader.py apiProjectName LACReposLocation [section=all| rule| resources| etc...]')
     
     else:
-        projectName = sys.argv[1]
-        reposLocation = sys.argv[2]
+        if len(sys.argv) == 3:
+            projectName = sys.argv[1]
+            reposLocation = sys.argv[2]
+        if len(sys.argv) == 4:
+            sections = sys.argv[3]
         print(sys.argv)   
         basepath = f"{reposLocation}/{apiroot}/{projectName}"
     
-    listDirs(basepath)
+    listDirs(basepath, sections)

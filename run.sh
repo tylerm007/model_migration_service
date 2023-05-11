@@ -1,1 +1,1 @@
-python3 filereader.py demo /Users/tylerband/CALiveAPICreator.repository
+python3 filereader.py b2bderbynw /Users/tylerband/CALiveAPICreator.repository all
