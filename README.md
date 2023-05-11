@@ -18,16 +18,16 @@ api_project_name=demo
 lac_repos_home=/{home}/CALiveAPICreator.repository
 sections=all | [rules,resources,...] optional
 
-python3 filereader.py  {api_project_name} {lac_repos_home} [{sections}]
+python3 reposreader.py  {api_project_name} {lac_repos_home} [{sections}]
 
 MAC EXAMPLE:
-python3 filereader.py demo /Users/user1/CALiveAPICreator.repository rules
+python3 reposreader.py demo /Users/user1/CALiveAPICreator.repository rules
 ```
 
 ## Skip Sections and Files
 This version skips the following files
 ```
-"api.json", "topics", "sorts","issues.json", "apioptions.json","filters", "timers", "exportoptions.json", ".DS_Store"
+"api.json","issues.json", "apioptions.json", "exportoptions.json", ".DS_Store"
 ```
 
 ## Rules
