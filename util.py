@@ -1,10 +1,10 @@
 
-def to_camel_case(text: str = None, firstToLower: bool = False ):
-    s = text.replace("-", " ").replace("_", " ")
-    s = s.split()
-    if text is None:
+def to_camel_case(textStr: str, firstToLower: bool = False ):
+    if textStr is None:
         return ""
-    r = s[0]+ ''.join(i.capitalize() for i in s[1:])
+    s = textStr.replace("-", " ").replace("_", " ")
+    sp = s.split(" ")
+    r = sp[0]+ ''.join(i.capitalize() for i in sp[1:])
     return r if firstToLower else r[:1].capitalize() + r[1:]
 
 
