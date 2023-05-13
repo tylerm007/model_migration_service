@@ -14,11 +14,18 @@ pip install -r requirements.txt
 ## Run
 point to you LAC repository home and  and select the project name from the list of 'apis'. The optional sections will only print the directory named.
 ```
-api_project_name=demo
-lac_repos_home=/{home}/CALiveAPICreator.repository
-sections=all | [rules,resources,...] optional
+$python3 reposreader.py --help
+Generate a report of an existing CA Live API Creator Repository
 
-python3 reposreader.py  {api_project_name} {lac_repos_home} [{sections}]
+options:
+  -h, --help         show this help message and exit
+  --repos REPOS      Full path to /User/guest/caliveapicreator.repository
+  --project PROJECT  The name of the LAC project (teamspaces/api) default: demo
+  --section SECTION  The api directory name to process [rules, resources, functions, etc.] default: all
+  --version          print the version number and exit
+
+
+python3 reposreader.py  --project demo --repos caliveapicreator.repository --section all
 
 MAC EXAMPLE:
 python3 reposreader.py demo /Users/user1/CALiveAPICreator.repository rules

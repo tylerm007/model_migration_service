@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+import argparse
 from pathlib import Path
 from rule import RuleObj
 from resourceobj import ResourceObj
@@ -8,6 +9,36 @@ from util import to_camel_case, fixup
 
 global version
 
+def main(calling_args=None):
+    if calling_args:
+        args = calling_args
+    else:
+        parser = argparse.ArgumentParser(description="Generate a report of an existing CA Live API Creator Repository ")
+        parser.add_argument("--repos", help="Full path to /User/guest/caliveapicreator.repository", type=str)
+        parser.add_argument("--project", help="The name of the LAC project (teamspace/api) default: demo", default="demo", type=str)
+        parser.add_argument("--section", help="The api directory name to process [rules, resources, functions, etc.] default: all", default="all",type=str)
+        parser.add_argument("--version", action="store_true", help="print the version number and exit")
+      
+        args = parser.parse_args()
+        
+        if args.version:
+            version = "1.0" # TODO
+            print(version)
+            return
+        if not args.repos:
+            print('Please supply a --repos location\n', file=sys.stderr)
+            parser.print_help()
+            return
+        
+        projectName = args.project or "demo"
+        reposLocation = args.repos
+        sections = args.section or "all"
+       
+        basepath = f"{reposLocation}/{apiroot}/{projectName}"
+    try:
+        listDirs(basepath, sections)
+    except Exception as ex:
+        print(f"Error running  {ex}")
 
 def setVersion(path: Path):
     global version
@@ -588,27 +619,5 @@ version = "5.4"
 command = "not set"
 sections = "all" # all is default
 
-# The above code is a common Python idiom that checks if the current script is being run as the main
-# program or if it is being imported as a module into another program. If it is being run as the main
-# program, the code inside the if block will be executed. If it is being imported as a module, the
-# code inside the if block will not be executed. This is useful for separating code that should only
-# be run when the script is executed directly from code that should be reusable as a module.
 if __name__ == "__main__":
-    commands = sys.argv
-    if len(sys.argv) < 3:
-        print(
-            "\nCommand Line Arguments: python3 reposreader.py apiProjectName LACReposLocation [section=all| rule| resources| etc...]"
-        )
-
-    else:
-        if len(sys.argv) == 3:
-            projectName = sys.argv[1]
-            reposLocation = sys.argv[2]
-        if len(sys.argv) == 4:
-            sections = sys.argv[3]
-        print(sys.argv)
-        basepath = f"{reposLocation}/{apiroot}/{projectName}"
-    try:
-        listDirs(basepath, sections)
-    except Exception as ex:
-        print(f"Error running  {ex}")
+    main()
