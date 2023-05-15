@@ -561,7 +561,7 @@ def listDirs(path: Path, section: str = "all"):
         if entry == "resources":
             resList = resources(f"{path}/{entry}")
             for resObj in resList:
-                ResourceObj.PrintResource(resObj, version)
+                ResourceObj.PrintResource(resObj,version)
             for resObj in resList:
                 printCurlTests(resObj)
             continue
@@ -617,7 +617,9 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-sections = "all" # all is default
+sections = "resources" # all is default
 
 if __name__ == "__main__":
+    listDirs(basepath, sections)
+else:
     main()
