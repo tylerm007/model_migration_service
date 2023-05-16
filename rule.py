@@ -1,5 +1,12 @@
 from util import to_camel_case, fixup
+"""
+LAC RuleObject from file system JSON object
+Raises:
+    ValueError: JSON Object required
 
+Returns:
+    _type_: RuleObj
+"""
 class DotDict(dict):
     """ dot.notation access to dictionary attributes """
     # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329

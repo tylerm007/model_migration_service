@@ -1,6 +1,14 @@
 from util import to_camel_case, fixup
 import json
+"""
+Resources defined in LAC - TableBased only (SQL and JS)
 
+Raises:
+    ValueError: JSON Object (from file system)
+    
+Returns:
+    _type_: RuleObj
+"""
 class DotDict(dict):
     """ dot.notation access to dictionary attributes """
     # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329
@@ -120,7 +128,7 @@ class ResourceObj:
                 # if joinType == "joinParent":
                 if not child.jsonObj["isCollection"]:
                     print(i * f"{space}",f",isParent=True")
-                if child.jsonObj["isCombined"]:
+                if version != "5.4" and child.jsonObj["isCombined"]:
                     print(i * f"{space}",f",isCombined=True")
                 # print(
                 #   f"{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]}, {isCombined})"
