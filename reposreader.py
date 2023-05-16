@@ -561,7 +561,7 @@ def listDirs(path: Path, section: str = "all"):
         if entry == "resources":
             resList = resources(f"{path}/{entry}")
             for resObj in resList:
-                ResourceObj.PrintResource(resObj,version)
+                resObj.PrintResource(version)
             for resObj in resList:
                 printCurlTests(resObj)
             continue
@@ -620,6 +620,6 @@ command = "not set"
 sections = "resources" # all is default
 
 if __name__ == "__main__":
-    listDirs(basepath, sections)
-else:
+ #   listDirs(basepath, sections)
+#else:
     main()

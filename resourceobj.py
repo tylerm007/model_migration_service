@@ -53,31 +53,30 @@ class ResourceObj:
     @getJSObj.setter
     def getJsObj(self, js: str):
         self._getJSObj = fixup(js)
-        
-    @classmethod
-    def PrintResource(cls, r, version):
+
+    def PrintResource(self, version):
         # for r in resList:
-        if not r.isActive:
+        if not self.isActive:
             return
         space = "        "
-        name = r.name.lower()
-        entity = r.entity
+        name = self.name.lower()
+        entity = self.entity
         # print(f"#{r} s")
         print(f"    @app.route('/{name}')")
         print(f"    def {name}():")
-        print(f'{space}root = UserResource(models.{entity},"{r.name}"')
-        printResAttrs("root", r, version, 1)
-        printGetFunc("root", r, 1)
-        printChildren(r, "root", version, 1)
+        print(f'{space}root = UserResource(models.{entity},"{self.name}"')
+        self.printResAttrs(version, 1)
+        self.printGetFunc("root", 1)
+        self.printChildren(version, 1)
         print(f"{space})")
         print(f"{space}key = request.args.get(root.parentKey)")
-        #print(f'{space}limit = request.args.get("page_limit")')
-        #print(f'{space}offset = request.args.get("page_offset")')
+        # print(f'{space}limit = request.args.get("page_limit")')
+        # print(f'{space}offset = request.args.get("page_offset")')
         print(f"{space}result = root.execute(root, key")
         print('        return jsonify({"success": True, f"{root.name}": result})')
         print("")
         # these are the get_event.js
-        
+
     def PrintResourceFunctions(self, version: str):
         """
         Print a python function based on fixed JavaScript - modification of Python still required
@@ -96,90 +95,88 @@ class ResourceObj:
         if self.childObj is not None:
             for child in self.childObj:
                 child.PrintResourceFunctions(version)
-        
-def printChildren(
-    resource: ResourceObj, parent_name: str, version: str, i: int
-):
-    space = "        "
-    for child in resource.childObj:
-        cname = child._name
-        childName = f"{cname}_{i}"
-        print(i * f"{space}", f'include=[(models.{child.entity},"{cname}"')
-        printResAttrs(childName, child, version, i)
-        attrName = findAttrName(child)
-        if attrName is not None:
-            joinType = (
-                "join"
-                if child.jsonObj["isCollection"] is True
-                else "joinParent"
-            )
-            if joinType == "joinParent":
-                isCombined = (
-                    "True" if child.jsonObj["isCombined"] is True else "False"
+
+    def printChildren(self, version: str, i: int):
+        space = "        "
+        for child in self.childObj:
+            cname = child._name
+            childName = f"{cname}"
+            print(i * f'{space}',f',include=[(models.{child.entity},"{cname}"', end="\n")
+            child.printResAttrs(version, i)
+            attrName = findAttrName(child)
+            if attrName is not None:
+                joinType = (
+                    "join" if child.jsonObj["isCollection"] is True else "joinParent"
                 )
-                if not isCombined:
-                    print(i * f"{space},isParent=True")
-                #print(
+                # if joinType == "joinParent":
+                isCollection = True if child.jsonObj["isCollection"] else False
+                if not isCollection:
+                    print(i * f"{space}",f",isParent=True")
+                    isCombined = "True" if child.jsonObj["isCombined"] is True else "False"
+                    if isCombined:
+                        print(i * f"{space}",f",isCombined=True")
+                # print(
                 #   f"{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]}, {isCombined})"
-                #)
-            #else:
-                #print(
+                # )
+                # else:
+                # print(
                 #    f"{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[0]})"
-                #)
-        printGetFunc(childName, child, i + 1)
-        printChildren(child, childName, version, i + 1)
-        print(i * f"{space},  )")
-        print(i * f"{space} ]")
+                # )
+            child.printGetFunc(childName, i + 1)
+            child.printChildren(version, i + 1)
+            # print(f"{space},  )")
+            print(i * f"{space}","]")
 
-def printResAttrs(name: str, resource: ResourceObj, version: str, i: int):
-    if resource.jsonObj is None:
-        return
-    if "attributes" in resource.jsonObj:
-        fields = ""
-        sep = ""
-        for attr in resource.jsonObj["attributes"]:
-            space = "        "
-            attrName = attr["attribute"] if version == "5.4" else  attr["alias"]
-            fields +=  f'{sep} (models.{resource.entity}.{attrName}, "{attrName}")'
-            sep = ","
-            
-        print(i * f"{space},fields=[{fields}]")
+    def printResAttrs(self, version: str, i: int):
+        if self.jsonObj is None:
+            return
+        if "attributes" in self.jsonObj:
+            fields = ""
+            sep = ""
+            for attr in self.jsonObj["attributes"]:
+                space = "        "
+                attrName = attr["attribute"] if version == "5.4" else attr["alias"]
+                fields += f'{sep} (models.{self.entity}.{attrName}, "{attrName}")'
+                sep = ","
 
-def printGetFunc(name: str, res: ResourceObj , i: int):
-    if res._getJSObj is not None:
-        fn = f"fn_{name}_{res.entity}_event"
-        print(i * f"'     ',calling=({fn})")
+            print(i * f"{space}",f",fields=[{fields}]")
 
-def findAttrName(resObj: ResourceObj):
+    def printGetFunc(self, name: str, i: int):
+        space = "        "
+        if self._getJSObj is not None:
+            fn = f"fn_{name}_{self.entity}_event"
+            print(i * f"{space}",f",calling=({fn})")
+
+
+def findAttrName(resObj: object):
     if resObj.ResourceType == "TableBased":
-        join = resObj.jsonObj["join"]
-        if join is not None:
-            ret = []
-            join = join.replace('"', "", 10)
-            join = join.replace("[", "")
-            join = join.replace("]", "")
-            join = join.replace(" ", "", 4)
-            for j in join.split("="):
-                ret.append(j)
-            return ret
-        
-    
+        if "join" in resObj.jsonObj:
+            join = resObj.jsonObj["join"]
+            if join is not None:
+                ret = []
+                join = join.replace('"', "", 10)
+                join = join.replace("[", "")
+                join = join.replace("]", "")
+                join = join.replace(" ", "", 4)
+                for j in join.split("="):
+                    ret.append(j)
+                return ret
 
 
 if __name__ == "__main__":
-    jsonObj ={
+    jsonObj = {
         "name": "foo",
-        "entity" : "bar",
+        "entity": "bar",
         "resourceType": "TableBased",
         "attributes": [
-        {
-            "attribute": "CustomerID",
-            "alias": "CustomerID",
-            "description": "null",
-            "isKey": False
-        }
-        ]
+            {
+                "attribute": "CustomerID",
+                "alias": "CustomerID",
+                "description": "null",
+                "isKey": False,
+            }
+        ],
     }
-    resObj = ResourceObj("",jsonObj,"","","","") 
-    ResourceObj.PrintResource( resObj, "5.4")
-    ResourceObj.PrintResourceFunctions(resObj, "5.4")
+    resObj = ResourceObj("", jsonObj=jsonObj)
+    resObj.PrintResource("5.4")
+    resObj.PrintResourceFunctions("5.4")
