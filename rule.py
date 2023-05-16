@@ -1,5 +1,11 @@
 from util import to_camel_case, fixup
 
+class DotDict(dict):
+    """ dot.notation access to dictionary attributes """
+    # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 class RuleObj:
     
     def __init__(self, jsonObj: object, jsObj: str = None, sqlObj: str = None): 
@@ -17,42 +23,42 @@ class RuleObj:
         return f"Name: {self.name} Entity: {self.entity} RuleType: {self.ruleType}"
     
     
-    def ruleTypes(ruleObj: object):
+    def ruleTypes(self: object):
         """
 
         Args:
             RuleObj (object): _description_
         """
-        j = ruleObj.jsonObj
-        isActive = j["isActive"]
+        j = DotDict(self.jsonObj)
         # No need to print inactive rules
-        if isActive == False:
+        if j.isActive == False:
             return
-        name = j["name"]
+        name = j.name
         entity = ""
-        if "entity" in j:
-            entity = to_camel_case(j["entity"])
+        if j.entity is not None:
+            entity = to_camel_case(j.entity)
         ruleType = ""
-        if "ruleType" in j:
-            ruleType = j["ruleType"]
+        if j.ruleType is not None:
+            ruleType = j.ruleType
         title =""
-        if "title" in j:
-            title = j["title"]
+        if j.title is not None:
+            title = j.title
         funName = "fn_" + name.split(".")[0]
-        comments = j["comments"]
+        comments = j.comments
         appliesTo = ""
-        if "appliesTo" in j:
-            appliesTo = j["appliesTo"]
+        if j.appliesTo is not None:
+            appliesTo = j.appliesTo
         
         # Define a function to use in the rule 
-        ruleJSObj = None if ruleObj.jsObj is None else fixup(ruleObj.jsObj)
+        ruleJSObj = None if self.jsObj is None else fixup(self.jsObj)
         if ruleJSObj is not None:
-            funName =  f"fn_{name}"
+            entityLower = entity.lower()
+            funName =  f"fn_{entityLower}_{ruleType}_{name}"
             print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
             ## print("     if LogicRow.isInserted():")
             if len(appliesTo) > 0:
                 print(f"     #AppliesTo: {appliesTo}")
-            print("     " + fixup(ruleObj.jsObj))
+            print(f"        {ruleJSObj}")
         
         print("'''")
         print(f"     RuleType: {ruleType}")
@@ -64,9 +70,9 @@ class RuleObj:
         match ruleType:
             case "sum":
                 attr = j["attribute"]
-                roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
-                childAttr = j["childAttribute"]
-                qualification = j["qualification"]
+                roleToChildren = to_camel_case(j.roleToChildren).replace("_","")
+                childAttr = j.childAttribute
+                qualification = j.qualification
                 print(f"Rule.sum(derive=models.{entity}.{attr}, ")
                 print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
                 if qualification != None:
@@ -75,8 +81,7 @@ class RuleObj:
                     qualification = qualification.replace("null", "None")
                     print(f"         where=lambda row: {qualification} )")
             case "formula":
-                attr = j["attribute"]
-                funName =  "fn_" + name.split(".")[0]
+                attr = j.attribute
                 print(f"Rule.formula(derive=models.{entity}.{attr},")
                 if ruleJSObj is not None and len(ruleJSObj) > 80:
                     print(f"         calling={funName})")
@@ -84,9 +89,9 @@ class RuleObj:
                     ruleJSObj = ruleJSObj.replace("return","lambda row: ")
                     print(f"         as_expression={ruleJSObj})")
             case "count":
-                attr = j["attribute"]
-                roleToChildren = to_camel_case(j["roleToChildren"]).replace("_","")
-                qualification = j["qualification"]
+                attr = j.attribute
+                roleToChildren = to_camel_case(j.roleToChildren).replace("_","")
+                qualification = j.qualification
                 if qualification != None:
                     qualification = qualification.replace("!=", "is not")
                     qualification = qualification.replace("==", "is")
@@ -98,7 +103,7 @@ class RuleObj:
                     print(f"Rule.count(derive=models.{entity}.{attr},")
                     print(f"         as_count_of=models.{roleToChildren})")
             case "validation":
-                errorMsg = j["errorMessage"]
+                errorMsg = j.errorMessage
                 print(f"Rule.constraint(validate=models.{entity},")
                 print(f"         calling={funName},")
                 print(f"         error_msg=\"{errorMsg}\")")
@@ -109,9 +114,9 @@ class RuleObj:
                 print(f"Rule.commit_row_event(on_class=models.{entity},")
                 print(f"         calling={funName}")
             case "parentCopy":
-                attr = j["attribute"]
-                roleToParent = to_camel_case(j["roleToParent"]).replace("_","")
-                parentAttr = j["parentAttribute"]
+                attr = j.attribute
+                roleToParent = to_camel_case(j.roleToParent).replace("_","")
+                parentAttr = j.parentAttribute
                 print(f"Rule.copy(derive=models.{entity}.{attr},")
                 print(f"         from_parent=models.{roleToParent}.{parentAttr})")
             case _: 
