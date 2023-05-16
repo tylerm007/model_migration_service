@@ -620,6 +620,7 @@ command = "not set"
 sections = "resources" # all is default
 
 if __name__ == "__main__":
- #   listDirs(basepath, sections)
-#else:
     main()
+#else:  
+#    local testing and debugging
+#    listDirs(basepath, sections)

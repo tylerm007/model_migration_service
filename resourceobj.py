@@ -1,7 +1,12 @@
 from util import to_camel_case, fixup
 import json
 
-
+class DotDict(dict):
+    """ dot.notation access to dictionary attributes """
+    # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 class ResourceObj:
     def __init__(
         self,
@@ -53,6 +58,7 @@ class ResourceObj:
     @getJSObj.setter
     def getJsObj(self, js: str):
         self._getJSObj = fixup(js)
+        
 
     def PrintResource(self, version):
         # for r in resList:
@@ -69,10 +75,10 @@ class ResourceObj:
         self.printGetFunc("root", 1)
         self.printChildren(version, 1)
         print(f"{space})")
-        print(f"{space}key = request.args.get(root.parentKey)")
+        print(f"{space}key = request.args.get(root.primaryKey)")
         # print(f'{space}limit = request.args.get("page_limit")')
         # print(f'{space}offset = request.args.get("page_offset")')
-        print(f"{space}result = root.execute(root, key")
+        print(f"{space}result = root.execute(key)")
         print('        return jsonify({"success": True, f"{root.name}": result})')
         print("")
         # these are the get_event.js
@@ -98,23 +104,24 @@ class ResourceObj:
 
     def printChildren(self, version: str, i: int):
         space = "        "
+        multipleChildren = "" if len(self.childObj) == 1 else "["
         for child in self.childObj:
             cname = child._name
             childName = f"{cname}"
-            print(i * f'{space}',f',include=[(models.{child.entity},"{cname}"', end="\n")
-            child.printResAttrs(version, i)
+            childName = childName.replace("_","",2)
             attrName = findAttrName(child)
+            fkey = "" if attrName is None else  f",foreign_key=models.{child.entity}.{attrName[1]}" 
+            print(i * f'{space}',f',include=UserResource{multipleChildren}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
+            child.printResAttrs(version, i)
             if attrName is not None:
                 joinType = (
                     "join" if child.jsonObj["isCollection"] is True else "joinParent"
                 )
                 # if joinType == "joinParent":
-                isCollection = True if child.jsonObj["isCollection"] else False
-                if not isCollection:
+                if not child.jsonObj["isCollection"]:
                     print(i * f"{space}",f",isParent=True")
-                    isCombined = "True" if child.jsonObj["isCombined"] is True else "False"
-                    if isCombined:
-                        print(i * f"{space}",f",isCombined=True")
+                if child.jsonObj["isCombined"]:
+                    print(i * f"{space}",f",isCombined=True")
                 # print(
                 #   f"{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]}, {isCombined})"
                 # )
@@ -124,21 +131,23 @@ class ResourceObj:
                 # )
             child.printGetFunc(childName, i + 1)
             child.printChildren(version, i + 1)
-            # print(f"{space},  )")
-            print(i * f"{space}","]")
+            #print(f"{space},")
+            print(i * f"{space}",f"{multipleChildren})")
 
     def printResAttrs(self, version: str, i: int):
         if self.jsonObj is None:
             return
-        if "attributes" in self.jsonObj:
+        jDict = DotDict(self.jsonObj)
+        if jDict.useSchemaAttributes:
+            return
+        if jDict.attributes is not None:
             fields = ""
             sep = ""
-            for attr in self.jsonObj["attributes"]:
-                space = "        "
+            for attr in jDict.attributes:
                 attrName = attr["attribute"] if version == "5.4" else attr["alias"]
                 fields += f'{sep} (models.{self.entity}.{attrName}, "{attrName}")'
                 sep = ","
-
+            space = "        "
             print(i * f"{space}",f",fields=[{fields}]")
 
     def printGetFunc(self, name: str, i: int):
@@ -148,19 +157,22 @@ class ResourceObj:
             print(i * f"{space}",f",calling=({fn})")
 
 
-def findAttrName(resObj: object):
+def findAttrName(resObj: object) -> list:
+    ret = []
     if resObj.ResourceType == "TableBased":
         if "join" in resObj.jsonObj:
             join = resObj.jsonObj["join"]
             if join is not None:
-                ret = []
                 join = join.replace('"', "", 10)
                 join = join.replace("[", "")
                 join = join.replace("]", "")
                 join = join.replace(" ", "", 4)
                 for j in join.split("="):
                     ret.append(j)
-                return ret
+    if len(ret) == 2:
+        r = ret[1]
+        ret[1] = r[:-1] + r[-1:].lower()
+    return ret
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ def to_camel_case(textStr: str, firstToLower: bool = False ):
     s = textStr.replace("-", " ").replace("_", " ")
     sp = s.split(" ")
     r = sp[0]+ ''.join(i.capitalize() for i in sp[1:])
+    r = r[:len(r) -1] if r[len(r) - 1:] == 's' else r #singular names only
+    r = r[:len(r)-1] + r[len(r)-1:].lower()
     return r if firstToLower else r[:1].capitalize() + r[1:]
 
 
