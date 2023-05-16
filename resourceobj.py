@@ -86,7 +86,7 @@ class ResourceObj:
         print(f"{space}key = request.args.get(root.primaryKey)")
         # print(f'{space}limit = request.args.get("page_limit")')
         # print(f'{space}offset = request.args.get("page_offset")')
-        print(f"{space}result = root.execute(key)")
+        print(f"{space}result = root.Execute(key)")
         print('        return jsonify({"success": True, f"{root.name}": result})')
         print("")
         # these are the get_event.js
@@ -117,7 +117,7 @@ class ResourceObj:
             cname = child._name
             childName = f"{cname}"
             childName = childName.replace("_","",2)
-            attrName = findAttrName(child)
+            attrName = child.findAttrName()
             fkey = "" if attrName is None else  f",foreign_key=models.{child.entity}.{attrName[1]}" 
             print(i * f'{space}',f',include=UserResource{multipleChildren}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
             child.printResAttrs(version, i)
@@ -165,11 +165,11 @@ class ResourceObj:
             print(i * f"{space}",f",calling=({fn})")
 
 
-def findAttrName(resObj: object) -> list:
+def findAttrName(self) -> list:
     ret = []
-    if resObj.ResourceType == "TableBased":
-        if "join" in resObj.jsonObj:
-            join = resObj.jsonObj["join"]
+    if self.ResourceType == "TableBased":
+        if "join" in self.jsonObj:
+            join = self.jsonObj["join"]
             if join is not None:
                 join = join.replace('"', "", 10)
                 join = join.replace("[", "")
