@@ -1,6 +1,8 @@
 # Archimedes
 
 This project reads the CALiveAPICreator repos to parse rules into objects. This can help understand how to migrate to [Api Logic Server Docs](https://apilogicserver.github.io/Docs/) (ALS)
+Limitation - this is a tool and requires some manual fixup of rules, functions, or resources. Resources are limited to TableBased in this version (JavaScript and FreeSQL in future releases).  ALS table and column names may not match 100%.
+Python is not JavaScript and some fixup is required as well. Finally - there are built in features in LAC not currently in ALS (e.g. SysUtility)
 
 ## Install
 ```
@@ -139,10 +141,10 @@ the isParent= will treat MANY_TO_ONE relationship and return the parent row
     @@app.route('/partnerorder')
     def partnerorder():
         root = UserResource(models.Order,"PartnerOrder"
-         ,fields=[ (models.Order.CustomerNumber, "CustomerNumber"), (models.Order.OrderNumber, "OrderNumber")]
-         ,include=UserResource(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
-         ,fields=[ (models.Shipper.CompanyName, "CompanyName")]
-         ,isParent=True
+              ,fields=[ (models.Order.CustomerNumber, "CustomerNumber"), (models.Order.OrderNumber, "OrderNumber")]
+              ,include=UserResource(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
+              ,fields=[ (models.Shipper.CompanyName, "CompanyName")]
+              ,isParent=True
                  ,include=UserResource(model_class=models.OrderDetail,alias="Items" ,foreign_key=models.OrderDetail.OrderId
                  ,fields=[ (models.OrderDetail.ProductNumber, "ProductNumber"), (models.OrderDetail.Quantity, "Quantity")]
                          ,include=UserResource(model_class=models.Product,alias="Product" ,foreign_key=models.Product.ProductId
@@ -150,7 +152,7 @@ the isParent= will treat MANY_TO_ONE relationship and return the parent row
                          ,isParent=True
                          )
                  )
-         )
+            )
         )
         return root.Execute(request.args)
 

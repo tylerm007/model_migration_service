@@ -70,7 +70,8 @@ class ResourceObj:
 
     def PrintResource(self, version):
         # for r in resList:
-        if not self.isActive:
+        if not self.isActive or self.ResourceType != "TableBased":
+            print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType}")
             return
         space = "        "
         name = self.name.lower()
@@ -114,6 +115,8 @@ class ResourceObj:
         space = "        "
         multipleChildren = "" if len(self.childObj) == 1 else "["
         for child in self.childObj:
+            if child.ResourceType != "TableBased":
+                continue
             cname = child._name
             childName = f"{cname}"
             childName = childName.replace("_","",2)
