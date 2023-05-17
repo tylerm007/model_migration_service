@@ -157,6 +157,12 @@ class ResourceObj:
                 sep = ","
             space = "        "
             print(i * f"{space}",f",fields=[{fields}]")
+        if jDict.filter is not None:
+            print(f"{space}",f"#,filter_by=({jDict.filter})")
+        if version == '5.4' and jDict.order is not None:
+             print(f"{space}",f"#,order_by=({jDict.order})")
+        if version != '5.4' and jDict.sort is not None:
+             print(f"{space}",f"#,order_by=({jDict.sort})")
 
     def printGetFunc(self, name: str, i: int):
         space = "        "
@@ -165,22 +171,22 @@ class ResourceObj:
             print(i * f"{space}",f",calling=({fn})")
 
 
-def findAttrName(self) -> list:
-    ret = []
-    if self.ResourceType == "TableBased":
-        if "join" in self.jsonObj:
-            join = self.jsonObj["join"]
-            if join is not None:
-                join = join.replace('"', "", 10)
-                join = join.replace("[", "")
-                join = join.replace("]", "")
-                join = join.replace(" ", "", 4)
-                for j in join.split("="):
-                    ret.append(j)
-    if len(ret) == 2:
-        r = ret[1]
-        ret[1] = r[:-1] + r[-1:].lower()
-    return ret
+    def findAttrName(self) -> list:
+        ret = []
+        if self.ResourceType == "TableBased":
+            if "join" in self.jsonObj:
+                join = self.jsonObj["join"]
+                if join is not None:
+                    join = join.replace('"', "", 10)
+                    join = join.replace("[", "")
+                    join = join.replace("]", "")
+                    join = join.replace(" ", "", 4)
+                    for j in join.split("="):
+                        ret.append(j)
+        if len(ret) == 2:
+            r = ret[1]
+            ret[1] = r[:-1] + r[-1:].lower()
+        return ret
 
 
 if __name__ == "__main__":
