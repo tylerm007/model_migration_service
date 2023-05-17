@@ -80,8 +80,8 @@ class ResourceObj:
         print(f"    def {name}():")
         print(f'{space}root = UserResource(models.{entity},"{self.name}"')
         self.printResAttrs(version, 1)
-        self.printGetFunc("root", 1)
-        self.printChildren(version, 1)
+        self.printGetFunc(name, 1)
+        self.printChildren(name, version, 1)
         print(f"{space})")
         print(f"{space}key = request.args.get(root.primaryKey)")
         # print(f'{space}limit = request.args.get("page_limit")')
@@ -91,7 +91,7 @@ class ResourceObj:
         print("")
         # these are the get_event.js
 
-    def PrintResourceFunctions(self, version: str):
+    def PrintResourceFunctions(self, parentName: str, version: str):
         """
         Print a python function based on fixed JavaScript - modification of Python still required
         Args:
@@ -101,16 +101,16 @@ class ResourceObj:
             name = self.name.lower()
             entity = self.entity.lower()
             space = "          "
-            print(f"{space}def fn_{name}_{entity}_event(row: any):")
+            print(f"{space}def fn_{parentName}_{name}_{entity}_event(row: any):")
             print(f"{space}{space}pass")
             print("'''")
-            print(f"{space}{self._getJSObj}")
+            print(f"{space}{fixup(self._getJSObj)}")
             print("'''")
         if self.childObj is not None:
             for child in self.childObj:
-                child.PrintResourceFunctions(version)
+                child.PrintResourceFunctions(parentName, version)
 
-    def printChildren(self, version: str, i: int):
+    def printChildren(self, parentName: str, version: str, i: int):
         space = "        "
         multipleChildren = "" if len(self.childObj) == 1 else "["
         for child in self.childObj:
@@ -137,8 +137,8 @@ class ResourceObj:
                 # print(
                 #    f"{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[0]})"
                 # )
-            child.printGetFunc(childName, i + 1)
-            child.printChildren(version, i + 1)
+            child.printGetFunc(parentName, i + 1)
+            child.printChildren(parentName, version, i + 1)
             #print(f"{space},")
             print(i * f"{space}",f"{multipleChildren})")
 
@@ -164,10 +164,10 @@ class ResourceObj:
         if version != '5.4' and jDict.sort is not None:
              print(f"{space}",f"#,order_by=({jDict.sort})")
 
-    def printGetFunc(self, name: str, i: int):
+    def printGetFunc(self, parentName: str, i: int):
         space = "        "
         if self._getJSObj is not None:
-            fn = f"fn_{name}_{self.entity}_event"
+            fn = f"fn_{parentName}_{self._name}_{self.entity}_event"
             print(i * f"{space}",f",calling=({fn})")
 
 
@@ -205,4 +205,4 @@ if __name__ == "__main__":
     }
     resObj = ResourceObj("", jsonObj=jsonObj)
     resObj.PrintResource("5.4")
-    resObj.PrintResourceFunctions("5.4")
+    resObj.PrintResourceFunctions("root", "5.4")

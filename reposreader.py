@@ -1,3 +1,13 @@
+# filereader.py
+# Copyright (C) 2005-2021 the Archimedes authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of Archimedes and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+"""
+This is a utility to read the CA Live API Creator file based repository and print a report that can be used to help migrate 
+to API Logic Server (a Python API open-source tool) https://apilogicserver.github.io/Docs/
+"""
 import os
 import json
 import sys
@@ -273,9 +283,9 @@ def resources(resPath: str):
     # print("=========================")
     resources = []
     parentPath = ""
-    thisPath = resPath + "/v1"
+    thisPath = resPath + f"{os.sep}v1"
     for dirpath, dirs, files in os.walk(thisPath):
-        path = dirpath.split("/")
+        path = dirpath.split(f"{os.sep}")
         dirName = path[len(path) - 1]
         print("|", len(path) * "---", "D", dirName)
         for f in files:
@@ -318,7 +328,7 @@ def printDir(resPath: Path):
         _type_: _description_
     """
     thisPath = resPath
-    rootLen = len(thisPath.split("/")) + 1
+    rootLen = len(thisPath.split(os.sep)) + 1
     lastParent = ""
     resources = []
     for dirpath, dirs, files in os.walk(thisPath):
@@ -362,7 +372,7 @@ def relationships(relFile: str):
 
 def functionList(thisPath: str):
     for dirpath, dirs, files in os.walk(thisPath):
-        path = dirpath.split("/")
+        path = dirpath.split(os.sep)
         for f in files:
             if f in [
                 "ReadMe.md",
@@ -382,10 +392,13 @@ def functionList(thisPath: str):
                     print(f"     {fixup(d)}")
 
 
-def rules(thisPath):
+def rules(thisPath) -> list:
     # print("=========================")
     # print("        RULES ")
     # print("=========================")
+    '''
+    Collect all of the rules and stash in a list of objects
+    '''
     rules = []
     for dirpath, dirs, files in os.walk(thisPath):
         for f in files:
@@ -424,14 +437,14 @@ def findInFiles(dirpath, files, fileName):
 
 
 def findParent(objectList, dirList, parentDir):
-    dl = dirList.split("/")
+    dl = dirList.split(os.sep)
     if dl[len(dl) - 2] == "v1":
         return None  # Root
     return next((l for l in objectList if l.parentName == parentDir), None)
 
 
 def findObjInPath(objectList, pathName, name):
-    pn = pathName.replace(f"{basepath}/v1/", "")
+    pn = pathName.replace(f"{basepath}{os.sep}v1{os.sep}", "")
     nm = name.split(".")[0]
     return next((l for l in objectList if l.parentName == pn and l.name == nm), None)
 
@@ -460,7 +473,7 @@ interested details in rules, functions, resources
 
 def listExpanded(path: str):
     for dirpath, dirs, files in os.walk(path):
-        path = dirpath.split("/")
+        path = dirpath.split(os.sep)
         if os.path.basename(dirpath) in [
             "filters",
             "request_events",
@@ -531,8 +544,9 @@ def printCurlTests(resObj: ResourceObj):
     if resObj.isActive:
         name = resObj.name.lower()
         entity = resObj.entity
-        print(f"ECHO {name}")
-        print(f"curl -X 'GET' \"http://localhost:5656/{name}\"")
+        filter_by = "?page[limit]=10&page[offset]=0&filter[key]=value"
+        print(f"ECHO calling {name}{filter_by}")
+        print(f"curl -X 'GET' \"http://localhost:5656/{name}{filter_by}\"")
         print("")
 
 
@@ -544,7 +558,7 @@ def listDirs(path: Path, section: str = "all"):
         if section.lower() != "all" and entry != section:
             continue
 
-        filePath = f"{path}/{entry}"
+        filePath = f"{path}{os.sep}{entry}"
         if entry in [
             "api.json",
             "issues.json",
@@ -559,9 +573,11 @@ def listDirs(path: Path, section: str = "all"):
         print("=========================")
 
         if entry == "resources":
-            resList = resources(f"{path}/{entry}")
+            resList: ResourceObj = resources(f"{path}{os.sep}{entry}")
             for resObj in resList:
                 resObj.PrintResource(version)
+            for resObj in resList:
+                resObj.PrintResourceFunctions(resObj._name, version)
             for resObj in resList:
                 printCurlTests(resObj)
             continue
@@ -596,14 +612,14 @@ def listDirs(path: Path, section: str = "all"):
             continue
 
         if entry == "relationships.json":
-            relationships(f"{path}/relationships.json")
+            relationships(f"{path}{os.sep}relationships.json")
             continue
 
         if entry == "security":
             securityRoles(filePath)
             continue
 
-        printDir(f"{basepath}/{entry}")
+        printDir(f"{basepath}{os.sep}{entry}")
 
 
 """
@@ -617,10 +633,10 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-sections = "all" # all is default
+section = "resources" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-    main()
-#else:  
+#    main()
+#lse:  
 #    local testing and debugging
-#    listDirs(basepath, sections)
+    listDirs(basepath, section)

@@ -50,6 +50,7 @@ def fixup(str):
     newStr = newStr.replace("!==", "!=", 20)
     newStr = newStr.replace("}", "", 40)
     newStr = newStr.replace("else  if ", "elif", 20)
+    newStr = newStr.replace(" else {","else:", 10)
     newStr = newStr.replace("true", "True", 30)
     newStr = newStr.replace("false", "False", 30)
     newStr = newStr.replace("if (", "if ", 30)

@@ -130,47 +130,35 @@ include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 ```
 
 ### Resources are linked and nested - this becomes the basis for new endpoints (root)
+The UserResource defines the SAFRS table, with an optional alias
+the foreign_key= is the attribute to use to match the parent primaryKey value
+the optional fields= will allow the result to be reshaped 
+the calling will pass each row to the defined function (create virtual attributes)
+the isParent= will treat MANY_TO_ONE relationship and return the parent row 
 ```
-    @app.route('/customers')
-    def customers():
-        root = Resource(models.Customer,"Customers")
-        Resource.alias(root,models.Customer.Name, "Name")
-        Resource.alias(root,models.Customer.Balance, "Balance")
-        Resource.alias(root,models.Customer.CreditLimit, "CreditLimit")
-        Resource.calling(root, myGetFunction)
-
-        Orders_1 = Resource(models.PurchaseOrder,"Orders")
-        Resource.alias(Orders_1,models.PurchaseOrder.OrderNumber, "OrderNumber")
-        Resource.alias(Orders_1,models.PurchaseOrder.TotalAmount, "TotalAmount")
-        Resource.alias(Orders_1,models.PurchaseOrder.Paid, "Paid")
-        Resource.alias(Orders_1,models.PurchaseOrder.Notes, "Notes")
-        Resource.join(root, Orders_1, models.PurchaseOrder.customer_name)
-
-        LineItems_2 = Resource(models.LineItem,"LineItems")
-        Resource.alias(LineItems_2,models.LineItem.ProductNumber, "ProductNumber")
-        Resource.alias(LineItems_2,models.LineItem.OrderNumber, "OrderNumber")
-        Resource.alias(LineItems_2,models.LineItem.Quantity, "Quantity")
-        Resource.alias(LineItems_2,models.LineItem.Price, "Price")
-        Resource.alias(LineItems_2,models.LineItem.Amount, "Amount")
-        Resource.join(Orders_1, LineItems_2, models.LineItem.order_number)
-
-        Product_3 = Resource(models.Product,"Product")
-        Resource.alias(Product_3,models.Product.Name, "Name")
-        Resource.alias(Product_3,models.Product.Price, "Price")
-        Resource.alias(Product_3,models.Product.ProductId, "ProductId")
-        Resource.joinParent(LineItems_2, Product_3, models.LineItem.product_number)
-
-        key = request.args.get(root.parentKey)
-        limit = request.args.get("page_limit")
-        offset = request.args.get("page_offset")
-        result = Resource.execute(root, key, limit, offset)
-        return jsonify({"success": True, f"{root.name}": result})
+    @@app.route('/partnerorder')
+    def partnerorder():
+        root = UserResource(models.Order,"PartnerOrder"
+         ,fields=[ (models.Order.CustomerNumber, "CustomerNumber"), (models.Order.OrderNumber, "OrderNumber")]
+         ,include=UserResource(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
+         ,fields=[ (models.Shipper.CompanyName, "CompanyName")]
+         ,isParent=True
+                 ,include=UserResource(model_class=models.OrderDetail,alias="Items" ,foreign_key=models.OrderDetail.OrderId
+                 ,fields=[ (models.OrderDetail.ProductNumber, "ProductNumber"), (models.OrderDetail.Quantity, "Quantity")]
+                         ,include=UserResource(model_class=models.Product,alias="Product" ,foreign_key=models.Product.ProductId
+                         ,fields=[ (models.Product.ProductName, "ProductName")]
+                         ,isParent=True
+                         )
+                 )
+         )
+        )
+        return root.Execute(request.args)
 
     def myGetFunction(row: any):
        row["myVirtualAttribute"] = "foo"
 
 curl -X 'GET' \
-  'http://localhost:5656/api/Customers?Name=ALFKI/
+  'http://localhost:5656/api/partnerorder?Id=1000/
   -H 'accept: application/vnd.api+json' \
   -H 'Content-Type: application/vnd.api+json'
 
