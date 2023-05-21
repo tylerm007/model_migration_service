@@ -1,4 +1,4 @@
-from util import to_camel_case, fixup
+from util import to_camel_case, fixup, fixupSQL
 import json
 """
 Resources defined in LAC - TableBased only (SQL and JS)
@@ -190,7 +190,15 @@ class ResourceObj:
             r = ret[1]
             ret[1] = r[:-1] + r[-1:].lower()
         return ret
-
+    
+    def printFreeSQL(self):
+        space = "        "
+        if not self.isActive or self.ResourceType != "FreeSQL":
+            return
+        print("")
+        name = self.name.lower()
+        print(f"def get_{name}():")
+        print(f"{space}return {fixupSQL(self.jsSQL)}")
 
 if __name__ == "__main__":
     jsonObj = {
@@ -209,3 +217,4 @@ if __name__ == "__main__":
     resObj = ResourceObj("", jsonObj=jsonObj)
     resObj.PrintResource("5.4")
     resObj.PrintResourceFunctions("root", "5.4")
+

@@ -98,6 +98,7 @@ def listFiles(path: Path):
 
 
 def dataSource(path: Path):
+    print("# This is informational only of the database schema, tables, columns")
     # print("=========================")
     # print("        SQL Tables ")
     # print("=========================")
@@ -138,7 +139,7 @@ def dataSource(path: Path):
                         else j["schemaCache"]["metaHolder"]["tables"]
                     )
                     for t in tables:
-                        print("")
+                        print(" ")
                         name = t["name"] if version == "5.4" else t["entity"]
                         tableList.append(name)
                         print(f"create table {schema}.{name} (")
@@ -283,11 +284,11 @@ def resources(resPath: str):
     # print("=========================")
     resources = []
     parentPath = ""
-    thisPath = resPath + f"{os.sep}v1"
+    thisPath = f"{resPath}{os.sep}v1"
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split(f"{os.sep}")
         dirName = path[len(path) - 1]
-        print("|", len(path) * "---", "D", dirName)
+        print("|", len(path) * "--", "D", dirName)
         for f in files:
             if f in ["ReadMe.md", ".DS_Store"]:
                 continue
@@ -322,10 +323,7 @@ def printDir(resPath: Path):
     """_summary_
 
     Args:
-        resPath (Path): _description_
-
-    Returns:
-        _type_: _description_
+        resPath (Path): 
     """
     thisPath = resPath
     rootLen = len(thisPath.split(os.sep)) + 1
@@ -348,6 +346,7 @@ def printDir(resPath: Path):
 
 
 def relationships(relFile: str):
+    print("# This is informational only")
     # print("=========================")
     # print("    RELATIONSHIPS ")
     # print("=========================")
@@ -371,6 +370,14 @@ def relationships(relFile: str):
 
 
 def functionList(thisPath: str):
+    """
+    LAC has many different JavaScript functions, libraries, pipelines (aka request_response)
+    Many of these cannot be converted directly since they may use utilities or functions
+    not available (e.g. SysUtility) or expect state information (logic_row) 
+    Recommendation: refactor the JS to match the desired result in ALS
+    Args:
+        thisPath (str): 
+    """
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split(os.sep)
         for f in files:
@@ -385,11 +392,13 @@ def functionList(thisPath: str):
             fname = os.path.join(dirpath, f)
             if fname.endswith(".js"):
                 with open(fname) as myfile:
-                    d = myfile.read()
-                    # print("'''")
+                    fn = myfile.read()
+                    print("")
+                    fn = fixup(fn)
                     funName = "fn_" + f.split(".")[0]
-                    print(f"def {funName}:")
-                    print(f"     {fixup(d)}")
+                    print(f"def {funName}(row: models.TableName, old_row: models.TableName, logic_row: LogicRow):")
+                    #print("     return")
+                    print(f"     {fn}")
 
 
 def rules(thisPath) -> list:
@@ -397,7 +406,8 @@ def rules(thisPath) -> list:
     # print("        RULES ")
     # print("=========================")
     '''
-    Collect all of the rules and stash in a list of objects
+    Collect all of the rules definitions and JS info and stash in a list of RuleObj objects
+    The object itself (rule.py) has print functions that do the transforms
     '''
     rules = []
     for dirpath, dirs, files in os.walk(thisPath):
@@ -417,7 +427,6 @@ def rules(thisPath) -> list:
                     rules.append(rule)
     return rules
 
-
 def entityList(rules: object):
     entityList = []
     for r in rules:
@@ -425,7 +434,6 @@ def entityList(rules: object):
         if entity not in entityList:
             entityList.append(entity)
     return entityList
-
 
 def findInFiles(dirpath, files, fileName):
     for f in files:
@@ -447,7 +455,6 @@ def findObjInPath(objectList, pathName, name):
     pn = pathName.replace(f"{basepath}{os.sep}v1{os.sep}", "")
     nm = name.split(".")[0]
     return next((l for l in objectList if l.parentName == pn and l.name == nm), None)
-
 
 def printChild(self):
     if self.childObj != None:
@@ -573,6 +580,7 @@ def listDirs(path: Path, section: str = "all"):
         print("=========================")
 
         if entry == "resources":
+            print("#Copy this section to ALS api/customize_api.py")
             resList: ResourceObj = resources(f"{path}{os.sep}{entry}")
             for resObj in resList:
                 resObj.PrintResource(version)
@@ -580,12 +588,17 @@ def listDirs(path: Path, section: str = "all"):
                 resObj.PrintResourceFunctions(resObj._name, version)
             for resObj in resList:
                 printCurlTests(resObj)
+            
+            print("#FreeSQL TODO section to ALS api/customize_api.py")
+            for resObj in resList:
+                resObj.printFreeSQL()
             continue
 
         if entry == "rules":
             rulesList = rules(filePath)
             entities = entityList(rulesList)
             # Table of Contents
+            print("#Copy this section to ALS logic/declare_logic.py")
             for entity in entities:
                 entityName = to_camel_case(entity)
                 print(f"# ENTITY: {entityName}")
@@ -599,15 +612,8 @@ def listDirs(path: Path, section: str = "all"):
             dataSource(filePath)
             continue
 
-        if entry == "functions":
-            functionList(filePath)
-            continue
-
-        if entry == "lbiraries":
-            functionList(filePath)
-            continue
-
-        if entry == "request_events":
+        if entry in ["request_events" ,"pipelines", "libraries", "functions"]:
+            print(f"#These are JavaScript {entry} can be called by rules and resources")
             functionList(filePath)
             continue
 
@@ -628,7 +634,7 @@ def listDirs(path: Path, section: str = "all"):
  = ~/CALiveAPICreator.repository
 """
 apiroot = "teamspaces/default/apis"
-projectName = "demo" #"b2bderbynw"
+projectName = "b2bderbynw"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
@@ -636,7 +642,7 @@ command = "not set"
 section = "all" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-    main()
+#    main()
 #lse:  
 #    local testing and debugging
-#    listDirs(basepath, section)
+    listDirs(basepath, section)

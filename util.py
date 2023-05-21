@@ -27,9 +27,9 @@ def fixup(str):
     if str is None:
         return str
     newStr = str.replace("oldRow", "old_row", 20)
-    newStr = newStr.replace("logicContext", "logic_row", 20)
-    newStr = newStr.replace("log.", "logic_row.log.", 20)
-    newStr = newStr.replace("var", "", 20)
+    newStr = newStr.replace("logicContext", "logic_row", 40)
+    newStr = newStr.replace("log.", "logic_row.log.", 40)
+    newStr = newStr.replace("var ", "", 40)
     newStr = newStr.replace("//", "#", 200)
     newStr = newStr.replace("createPersistentBean", "logic_row.new_logic_row")
     newStr = newStr.replace(";", "", 200)
@@ -81,3 +81,21 @@ if __name__ == "__main__":
     
     print(to_camel_case("foo_bar",True))
     print(to_camel_case("foo_bar",False))
+
+def fixupSQL(sql):
+    """
+    LAC FreeSQL passes these args
+    -- perhaps generate a function
+    these were place holders that are passed by client or defaulted
+    @{SCHEMA} __bindkey__
+    @{WHERE} s/b :@where
+    @{JOIN}  s/b :@join
+    @{ARGUMENT.} may include prefix (e.g. =main:entityName.attrName)
+    @(ORDER) - s/b :@order
+    @{arg_attrname} - s/b :@attrName
+    """
+    sql = sql.replace("}","",40)
+    sql = sql.replace("@{",":",40)
+    sql = sql.replace("\"","\\\"",40)
+    # dealing with double quotes and single quotes
+    return f"\"{sql}\""
