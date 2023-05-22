@@ -18,6 +18,7 @@ from resourceobj import ResourceObj
 from util import to_camel_case, fixup
 
 global version
+global tableAlias
 
 def main(calling_args=None):
     if calling_args:
@@ -46,10 +47,18 @@ def main(calling_args=None):
        
         basepath = f"{reposLocation}/{apiroot}/{projectName}"
     try:
+        readTableAlias()
         listDirs(basepath, sections)
     except Exception as ex:
         print(f"Error running  {ex}")
 
+def readTableAlias():
+    """
+    Read a list of generated tables from ALS to use in the translation
+    TableName = AliasName
+    """
+    tableAlias = []
+    
 def setVersion(path: Path):
     global version
     version = next(
@@ -198,11 +207,21 @@ def dataSource(path: Path):
                             f"  ALTER TABLE ADD CONSTRAINT fk_{name} FOREIGN KEY {child}({childCol}) REFERENCES {parent}({parentCol})"
                         )
                         print("")
-        # print curl test for root table API endpoints
+        print("=============================================================================================")
+        print("    CURL tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
+        print("=============================================================================================")
         for tbl in tableList:
-            print(f"ECHO calling endpoint: {tbl}")
-            print(f"curl -X 'GET' \"http://localhost:5656/{tbl}\"")
+            name = singular(tbl)
+            print(f"ECHO calling endpoint: {name}?page[limit]=1")
+            print(f"curl \"http://localhost:5656/api/{name}?page%5Blimit%5D=1\" \\")
+            print("         -H 'accept: application/vnd.api+json' \\")
+            print("         -H 'Content-Type: application/json' ")
             print("")
+            print("")
+
+def singular(name: str) -> str:
+    #return name[:-1] if name.endswith("s") else name  # singular names only
+    return name
 
 
 def resourceType(resource: object):
@@ -551,15 +570,17 @@ def printCurlTests(resObj: ResourceObj):
     if resObj.isActive:
         name = resObj.name.lower()
         entity = resObj.entity
-        filter_by = "?page[limit]=10&page[offset]=0&filter[key]=value"
-        print(f"ECHO calling {name}{filter_by}")
-        print(f"curl -X 'GET' \"http://localhost:5656/{name}{filter_by}\"")
+        filter_by = "?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
+        print(f"ECHO calling Entity {entity} using: {name}{filter_by}")
+        print("curl \"http://localhost:5656/{name}{filter_by}\"\\")
+        print("         -H 'accept: application/vnd.api+json' \\")
+        print("         -H 'Content-Type: application/json'")
         print("")
 
 
 def listDirs(path: Path, section: str = "all"):
     setVersion(path)
-    print(version)
+    print(f"LAC Version: {version}")
     for entry in os.listdir(path):
         # for dirpath, dirs, files in os.walk(basepath):
         if section.lower() != "all" and entry != section:
@@ -580,12 +601,15 @@ def listDirs(path: Path, section: str = "all"):
         print("=========================")
 
         if entry == "resources":
-            print("#Copy this section to ALS api/customize_api.py")
             resList: ResourceObj = resources(f"{path}{os.sep}{entry}")
+            print("#Copy this section to ALS api/customize_api.py")
             for resObj in resList:
                 resObj.PrintResource(version)
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
+            print("===============================================")
+            print("    CURL tests for each UserResource endpoint")
+            print("================================================")
             for resObj in resList:
                 printCurlTests(resObj)
             
@@ -642,7 +666,7 @@ command = "not set"
 section = "all" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-#    main()
+    main()
 #lse:  
 #    local testing and debugging
-    listDirs(basepath, section)
+#    listDirs(basepath, section)
