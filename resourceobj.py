@@ -71,7 +71,7 @@ class ResourceObj:
     def PrintResource(self, version):
         # for r in resList:
         if not self.isActive or self.ResourceType != "TableBased":
-            print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType}")
+            print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
             return
         space = "        "
         name = self.name.lower()
@@ -84,11 +84,11 @@ class ResourceObj:
         self.printGetFunc(name, 1)
         self.printChildren(name, version, 1)
         print(f"{space})")
-        print(f"{space}key = request.args.get(root.primaryKey)")
+        #print(f"{space}key = request.args.get(root.primaryKey)")
         # print(f'{space}limit = request.args.get("page_limit")')
         # print(f'{space}offset = request.args.get("page_offset")')
-        print(f"{space}result = root.Execute(key)")
-        print('        return jsonify({"success": True, f"{root.name}": result})')
+        print(f"{space}return root.Execute(request.args)")
+        #print('        return jsonify({"success": True, f"{root.name}": result})')
         print("")
         # these are the get_event.js
 

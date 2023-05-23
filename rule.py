@@ -58,35 +58,38 @@ class RuleObj:
         
         # Define a function to use in the rule 
         ruleJSObj = None if self.jsObj is None else fixup(self.jsObj)
+       
+        print(f"     # RuleType: {ruleType}")
+        print(f"     # Title: {title}")
+        print(f"     # Name: {name}")
+        print(f"     # Entity: {entity}")
+        print(f"     # Comments: {comments}")
+        print("")
         if ruleJSObj is not None:
             entityLower = entity.lower()
             funName =  f"fn_{entityLower}_{ruleType}_{name}"
-            print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
-            ## print("     if LogicRow.isInserted():")
-            if len(appliesTo) > 0:
-                print(f"     #AppliesTo: {appliesTo}")
-            print(f"        {ruleJSObj}")
-        
-        print("'''")
-        print(f"     RuleType: {ruleType}")
-        print(f"     Title: {title}")
-        print(f"     Name: {name}")
-        print(f"     Entity: {entity}")
-        print(f"     Comments: {comments}")
-        print("'''")
+            if len(ruleJSObj) < 80 and ruleType == "formula":
+                pass
+            else:
+                print(f"def {funName}(row: models.{entity}, old_row: models.{entity}, logic_row: LogicRow):")
+                ## print("     if LogicRow.isInserted():")
+                if len(appliesTo) > 0:
+                    print(f"     #AppliesTo: {appliesTo}")
+                print(f"        {ruleJSObj}")
         match ruleType:
             case "sum":
                 attr = j["attribute"]
                 roleToChildren = to_camel_case(j.roleToChildren).replace("_","")
                 childAttr = j.childAttribute
                 qualification = j.qualification
+                paren = ")" if qualification is None else ","
                 print(f"Rule.sum(derive=models.{entity}.{attr}, ")
-                print(f"         as_sum_of=models.{roleToChildren}.{childAttr},")
+                print(f"         as_sum_of=models.{roleToChildren}.{childAttr}{paren}")
                 if qualification != None:
                     qualification = qualification.replace("!=", "is not")
                     qualification = qualification.replace("==", "is")
                     qualification = qualification.replace("null", "None")
-                    print(f"         where=lambda row: {qualification} )")
+                    print(f"         where=lambda row: {qualification})")
             case "formula":
                 attr = j.attribute
                 print(f"Rule.formula(derive=models.{entity}.{attr},")
@@ -119,7 +122,7 @@ class RuleObj:
                 print(f"         calling={funName})")
             case "commitEvent":
                 print(f"Rule.commit_row_event(on_class=models.{entity},")
-                print(f"         calling={funName}")
+                print(f"         calling={funName})")
             case "parentCopy":
                 attr = j.attribute
                 roleToParent = to_camel_case(j.roleToParent).replace("_","")
