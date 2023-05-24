@@ -15,10 +15,26 @@ class DotDict(dict):
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
+
+class JoinObj:
+    # parent object, child object, and join operator from Resource join attribute
+    def __init__ (
+        self,
+        parent: str,
+        child: str,
+        op: str = None,
+    ):
+        self.parent = parent
+        self.child = child
+        self.op = op
+    
+    def __str__(self):
+        print(f"{self.parent} {self.op} = [{self.child}]")
+    
 class ResourceObj:
     def __init__(
         self,
-        dirpath,
+        parentName: str,
         jsonObj: dict,
         jsObj: str = None,
         sqlObj: str = None,
@@ -28,7 +44,7 @@ class ResourceObj:
         if not jsonObj:
             raise ValueError("JSON Object [dict] is required for ResourceObj")
         self.jsonObj = jsonObj
-        self.parentName = dirpath
+        self.parentName = parentName
         self._name = jsonObj["name"]
         entity = to_camel_case(self._name)
         if "entity" in jsonObj:
@@ -113,7 +129,7 @@ class ResourceObj:
 
     def printChildren(self, parentName: str, version: str, i: int):
         space = "        "
-        multipleChildren = "" if len(self.childObj) == 1 else "["
+        multipleChildren = "" if len(self.childObj) >= 1 else "["
         for child in self.childObj:
             if child.ResourceType != "TableBased":
                 continue
@@ -121,7 +137,7 @@ class ResourceObj:
             childName = f"{cname}"
             childName = childName.replace("_","",2)
             attrName = child.findAttrName()
-            fkey = "" if attrName is None else  f",foreign_key=models.{child.entity}.{attrName[1]}" 
+            fkey = child.createJoinOrForeignKey()
             print(i * f'{space}',f',include=UserResource{multipleChildren}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
             child.printResAttrs(version, i)
             if attrName is not None:
@@ -145,6 +161,20 @@ class ResourceObj:
             #print(f"{space},")
             print(i * f"{space}",f"{multipleChildren})")
 
+    def createJoinOrForeignKey(self):
+        attrName = self.findAttrName()
+        result = ""
+        if len(attrName) == 1:
+            result = f",foreign_key=models.{self.entity}.{attrName[0].parent}" 
+        elif len(attrName) > 1:
+            result = ",join=["    
+            sep = ""        
+            for join in attrName:
+                result += f"{sep}(models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
+                sep = ","
+            result += "]"
+        return result
+    
     def printResAttrs(self, version: str, i: int):
         if self.jsonObj is None:
             return
@@ -162,10 +192,11 @@ class ResourceObj:
             print(i * f"{space}",f",fields=[{fields}]")
         if jDict.filter is not None:
             print(f"{space}",f"#,filter_by=({jDict.filter})")
+        order = jDict.order if version == '5.4' else jDict.sort
         if version == '5.4' and jDict.order is not None:
-             print(f"{space}",f"#,order_by=({jDict.order})")
+             print(f"{space}",f",order_by=((models.{self.entity}.{order})")
         if version != '5.4' and jDict.sort is not None:
-             print(f"{space}",f"#,order_by=({jDict.sort})")
+             print(f"{space}",f",order_by=((models.{self.entity}.{order})")
 
     def printGetFunc(self, parentName: str, i: int):
         space = "        "
@@ -175,20 +206,22 @@ class ResourceObj:
 
 
     def findAttrName(self) -> list:
-        ret = []
-        if self.ResourceType == "TableBased":
-            if "join" in self.jsonObj:
-                join = self.jsonObj["join"]
-                if join is not None:
+        #if join is a =[b] and c = [d]
+        # return [(a=b),(c=d)]
+        ret = [] 
+        if "join" in self.jsonObj:
+            joinStr = self.jsonObj["join"]
+            if joinStr is not None:
+                for join in joinStr.split("and"):
                     join = join.replace('"', "", 10)
                     join = join.replace("[", "")
                     join = join.replace("]", "")
                     join = join.replace(" ", "", 4)
-                    for j in join.split("="):
-                        ret.append(j)
-        if len(ret) == 2:
-            r = ret[1]
-            ret[1] = r[:-1] + r[-1:].lower()
+                    j = join.split("=")
+                    #p = j[1]
+                    #p = p[:-1] + p[-1:].lower()
+                    jo = JoinObj(j[0], j[1], "=")
+                    ret.append(jo)
         return ret
     
     def printFreeSQL(self):

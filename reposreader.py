@@ -307,6 +307,7 @@ def resources(resPath: str):
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split(f"{os.sep}")
         dirName = path[len(path) - 1]
+        parentName = path[len(path) - 2]
         print("|", len(path) * "--", "D", dirName)
         for f in files:
             if f in ["ReadMe.md", ".DS_Store"]:
@@ -320,7 +321,7 @@ def resources(resPath: str):
                         if jsonObj["isActive"] == False:
                             continue
                     print("|", len(path) * "---", "F", f, "Entity:", printCols(jsonObj))
-                    resObj = ResourceObj(dirpath, jsonObj)
+                    resObj = ResourceObj(parentName, jsonObj)
                     # either add or link here
                     fn = jsonObj["name"].split(".")[0] + ".sql"
                     resObj.jsSQL = findInFiles(dirpath, files, fn)
@@ -328,7 +329,7 @@ def resources(resPath: str):
                     fn = jsonObj["name"].split(".")[0] + ".js"
                     resObj._jsObj = findInFiles(dirpath, files, fn)
                     resources.append(resObj)
-                    parentRes = findParent(resources, dirpath, parentPath)
+                    parentRes = findParent(resources, dirpath, parentName)
                     if parentRes != None:
                         parentRes.childObj.append(resObj)
             else:
@@ -338,16 +339,8 @@ def resources(resPath: str):
     return linkObjects(resources)
 
 
-def printDir(resPath: Path):
-    """_summary_
-
-    Args:
-        resPath (Path): 
-    """
-    thisPath = resPath
-    rootLen = len(thisPath.split(os.sep)) + 1
-    lastParent = ""
-    resources = []
+def printDir(thisPath: Path):
+    objList = []
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split("/")
         parent = path[len(path) - 1]
@@ -360,8 +353,9 @@ def printDir(resPath: Path):
                 with open(fname) as myfile:
                     d = myfile.read()
                     j = json.loads(d)
+                    objList.append(d)
 
-    return resources
+    return objList
 
 
 def relationships(relFile: str):
@@ -463,11 +457,11 @@ def findInFiles(dirpath, files, fileName):
     return None
 
 
-def findParent(objectList, dirList, parentDir):
+def findParent(objectList, dirList, parentName):
     dl = dirList.split(os.sep)
-    if dl[len(dl) - 2] == "v1":
+    if  dl[len(dl) - 2] == "v1":
         return None  # Root
-    return next((l for l in objectList if l.parentName == parentDir), None)
+    return next((l for l in objectList if l.name == parentName), None)
 
 
 def findObjInPath(objectList, pathName, name):
@@ -572,7 +566,7 @@ def printCurlTests(resObj: ResourceObj):
         entity = resObj.entity
         filter_by = "?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
         print(f"ECHO calling Entity {entity} using: {name}{filter_by}")
-        print("curl \"http://localhost:5656/{name}{filter_by}\"\\")
+        print(f"curl \"http://localhost:5656/{name}{filter_by}\"\\")
         print("         -H 'accept: application/vnd.api+json' \\")
         print("         -H 'Content-Type: application/json'")
         print("")
@@ -658,15 +652,15 @@ def listDirs(path: Path, section: str = "all"):
  = ~/CALiveAPICreator.repository
 """
 apiroot = "teamspaces/default/apis"
-projectName = "b2bderbynw"
+projectName = "ucf" #"b2bderbynw"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "all" # all is default or resources, rules, etc.s
+section = "resources" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-    main()
+#    main()
 #lse:  
 #    local testing and debugging
-#    listDirs(basepath, section)
+    listDirs(basepath, section)
