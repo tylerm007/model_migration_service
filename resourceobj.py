@@ -165,12 +165,12 @@ class ResourceObj:
         attrName = self.findAttrName()
         result = ""
         if len(attrName) == 1:
-            result = f",foreign_key=models.{self.entity}.{attrName[0].parent}" 
+            result = f",join_on=models.{self.entity}.{attrName[0].child}" 
         elif len(attrName) > 1:
-            result = ",join=["    
+            result = ",join_on=["    
             sep = ""        
             for join in attrName:
-                result += f"{sep}(models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
+                result += f"{sep}((models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
                 sep = ","
             result += "]"
         return result

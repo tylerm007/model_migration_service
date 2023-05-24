@@ -652,7 +652,7 @@ def listDirs(path: Path, section: str = "all"):
  = ~/CALiveAPICreator.repository
 """
 apiroot = "teamspaces/default/apis"
-projectName = "ucf" #"b2bderbynw"
+projectName = "b2bderbynw"
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
