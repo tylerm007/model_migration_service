@@ -284,31 +284,21 @@ def printCols(jsonObj: object):
     return f"{entity} {join} {attrs}) {filter}"
 
 
-def linkObjects(resList: object):
-    resources = []
-    # build root list first
-    for r in resList:
-        dp = r.parentName.split("/")
-        # dir = dp[len(dp) - 1]
-        isRoot = dp[len(dp) - 2] == "v1"
-        if isRoot:
-            resources.append(r)
-
-    return resources
+def getRootResources(resourceList: object):
+    return [r for r in resourceList if r.parentName == 'v1']
 
 
-def resources(resPath: str):
+def buildResourceList(resPath: str):
     # print("=========================")
     # print("       RESOURCES ")
     # print("=========================")
     resources = []
-    parentPath = ""
     thisPath = f"{resPath}{os.sep}v1"
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split(f"{os.sep}")
         dirName = path[len(path) - 1]
-        parentName = path[len(path) - 2]
-        print("|", len(path) * "--", "D", dirName)
+        parentName = path[-1] if path[-1] == 'v1' else path[-2]
+        print("|", len(path) * "--", "D",dirName)
         for f in files:
             if f in ["ReadMe.md", ".DS_Store"]:
                 continue
@@ -317,27 +307,28 @@ def resources(resPath: str):
                 with open(fname) as myfile:
                     data = myfile.read()
                     jsonObj = json.loads(data)
-                    if "isActive" in jsonObj:
-                        if jsonObj["isActive"] == False:
-                            continue
+                    if "isActive" in jsonObj and jsonObj["isActive"] == False:
+                       continue
+                   
                     print("|", len(path) * "---", "F", f, "Entity:", printCols(jsonObj))
-                    resObj = ResourceObj(parentName, jsonObj)
-                    # either add or link here
+                    drName = ','.join(path[:-1])
+                    resObj = ResourceObj(parentName=parentName, parentDir=drName, jsonObj=jsonObj)
+                    resources.append(resObj)
                     fn = jsonObj["name"].split(".")[0] + ".sql"
                     resObj.jsSQL = findInFiles(dirpath, files, fn)
                     resObj._getJSObj = findInFiles(dirpath, files, "get_event.js")
                     fn = jsonObj["name"].split(".")[0] + ".js"
                     resObj._jsObj = findInFiles(dirpath, files, fn)
-                    resources.append(resObj)
-                    parentRes = findParent(resources, dirpath, parentName)
-                    if parentRes != None:
-                        parentRes.childObj.append(resObj)
+                    if parentName != 'v1':
+                        parentRes = findParent(resources, path, parentName)
+                        if parentRes != None:
+                            parentRes.childObj.append(resObj)
+                    
             else:
                 print("|", len(path) * "---", "F", f)
-        parentPath = dirpath
 
-    return linkObjects(resources)
-
+    return getRootResources(resources)
+    
 
 def printDir(thisPath: Path):
     objList = []
@@ -457,11 +448,11 @@ def findInFiles(dirpath, files, fileName):
     return None
 
 
-def findParent(objectList, dirList, parentName):
-    dl = dirList.split(os.sep)
-    if  dl[len(dl) - 2] == "v1":
+def findParent(objectList, path, parentName):
+    if  path[-2] == "v1":
         return None  # Root
-    return next((l for l in objectList if l.name == parentName), None)
+    parentDir = ",".join(path[:-2])
+    return next((l for l in objectList if l.parentDir == parentDir and l.name == parentName), None)
 
 
 def findObjInPath(objectList, pathName, name):
@@ -595,10 +586,10 @@ def listDirs(path: Path, section: str = "all"):
         print("=========================")
 
         if entry == "resources":
-            resList: ResourceObj = resources(f"{path}{os.sep}{entry}")
+            resList: ResourceObj = buildResourceList(f"{path}{os.sep}{entry}")
             print("#Copy this section to ALS api/customize_api.py")
             for resObj in resList:
-                resObj.PrintResource(version)
+                resObj.PrintResource(version, apiURL)
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
             print("===============================================")
@@ -609,7 +600,7 @@ def listDirs(path: Path, section: str = "all"):
             
             print("#FreeSQL TODO section to ALS api/customize_api.py")
             for resObj in resList:
-                resObj.printFreeSQL()
+                resObj.printFreeSQL(apiURL)
             continue
 
         if entry == "rules":
@@ -651,8 +642,10 @@ def listDirs(path: Path, section: str = "all"):
     reposLocation = f"{reposLocation}/{projectName}"
  = ~/CALiveAPICreator.repository
 """
-apiroot = "teamspaces/default/apis"
 projectName = "b2bderbynw"
+apiURL = f"/rest/default/v1/{projectName}" # this is used for building the resource URL
+apiroot = "teamspaces/default/apis"
+
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
@@ -660,7 +653,7 @@ command = "not set"
 section = "resources" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-#    main()
+#   main()
 #lse:  
 #    local testing and debugging
     listDirs(basepath, section)

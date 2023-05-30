@@ -29,12 +29,13 @@ class JoinObj:
         self.op = op
     
     def __str__(self):
-        print(f"{self.parent} {self.op} = [{self.child}]")
+        print(f"parent {self.parent} op {self.op} = child [{self.child}]")
     
 class ResourceObj:
     def __init__(
         self,
         parentName: str,
+        parentDir: str,
         jsonObj: dict,
         jsObj: str = None,
         sqlObj: str = None,
@@ -45,6 +46,7 @@ class ResourceObj:
             raise ValueError("JSON Object [dict] is required for ResourceObj")
         self.jsonObj = jsonObj
         self.parentName = parentName
+        self.parentDir = parentDir
         self._name = jsonObj["name"]
         entity = to_camel_case(self._name)
         if "entity" in jsonObj:
@@ -84,7 +86,7 @@ class ResourceObj:
         self._getJSObj = fixup(js)
         
 
-    def PrintResource(self, version):
+    def PrintResource(self, version: str, apiURL: str = ""):
         # for r in resList:
         if not self.isActive or self.ResourceType != "TableBased":
             print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
@@ -93,7 +95,7 @@ class ResourceObj:
         name = self.name.lower()
         entity = self.entity
         # print(f"#{r} s")
-        print(f"    @app.route('/{name}')")
+        print(f"    @app.route('{apiURL}/{name}')")
         print(f"    def {name}():")
         print(f'{space}root = UserResource(models.{entity},"{self.name}"')
         self.printResAttrs(version, 1)
@@ -118,10 +120,11 @@ class ResourceObj:
             name = self.name.lower()
             entity = self.entity.lower()
             space = "          "
-            print(f"{space}def fn_{parentName}_{name}_{entity}_event(row: any):")
+            print(f"{space}def fn_{parentName}_{name}_{entity}_event(row: dict, tableRow: dict, parentRow: dict):")
             print(f"{space}{space}pass")
             print("'''")
-            print(f"{space}{fixup(self._getJSObj)}")
+            js = fixup(self._getJSObj)
+            print(f"{space}{js}")
             print("'''")
         if self.childObj is not None:
             for child in self.childObj:
@@ -224,13 +227,14 @@ class ResourceObj:
                     ret.append(jo)
         return ret
     
-    def printFreeSQL(self):
+    def printFreeSQL(self, apiURL: str = ""):
+        # Return the SQL statement used by a FreeSQL query
         space = "        "
         if not self.isActive or self.ResourceType != "FreeSQL":
             return
         print("")
         name = self.name.lower()
-        print(f"def get_{name}():")
+        print(f"def get_{name}():") #TODO - build getFramework for FreeSQL
         print(f"{space}return {fixupSQL(self.jsSQL)}")
 
 if __name__ == "__main__":
@@ -247,7 +251,8 @@ if __name__ == "__main__":
             }
         ],
     }
-    resObj = ResourceObj("", jsonObj=jsonObj)
-    resObj.PrintResource("5.4")
+    resObj = ResourceObj(parentName="v1", parentDir="", jsonObj=jsonObj)
+    resObj.PrintResource("5.4","/rest/default/v1")
     resObj.PrintResourceFunctions("root", "5.4")
+    resObj.printFreeSQL("/rest/default/v1/nw")
 
