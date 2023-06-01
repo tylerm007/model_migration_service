@@ -103,13 +103,9 @@ class ResourceObj:
         self.printGetFunc(name, 1)
         self.printChildren(name, version, 1)
         print(f"{space})")
-        #print(f"{space}key = request.args.get(root.primaryKey)")
-        # print(f'{space}limit = request.args.get("page_limit")')
-        # print(f'{space}offset = request.args.get("page_offset")')
         print(f"{space}return root.Execute(request.args)")
-        #print('        return jsonify({"success": True, f"{root.name}": result})')
         print("")
-        # these are the get_event.js
+        
 
     def PrintResourceFunctions(self, parentName: str, version: str):
         """

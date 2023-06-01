@@ -60,6 +60,7 @@ def readTableAlias():
     tableAlias = []
     
 def setVersion(path: Path):
+    # Recommend upgrade to 5.4 before starting transform
     global version
     version = next(
         (
@@ -97,20 +98,13 @@ def listFiles(path: Path):
                     print(f"     JS: {entry.name}")
                 if entry.name.endswith(".sql"):
                     print(f"     SQL: {entry.name}")
-                """
-                else:
-                    if entry.name in [".DS_Store"]:
-                        continue
-                    if entry.is_dir:
-                        listDir(os.path.join(path, entry.name)) 
-                """
 
 
 def dataSource(path: Path):
-    print("# This is informational only of the database schema, tables, columns")
     # print("=========================")
     # print("        SQL Tables ")
     # print("=========================")
+    print("# This is informational only of the database schema, tables, columns")
     tableList = []
     with os.scandir(path) as entries:
         for f in entries:
@@ -188,18 +182,9 @@ def dataSource(path: Path):
                     else:
                         fkeys = j["schemaCache"]["metaHolder"]["foreignKeys"]
                     for fk in fkeys:
-                        if version == "5.4":
-                            name = fk["name"]
-                        else:
-                            name = fk["entity"]
-                        if version == "5.4":
-                            parent = fk["parent"]["name"]
-                        else:
-                            parent = fk["parent"]["object"]
-                        if version == "5.4":
-                            child = fk["child"]["name"]
-                        else:
-                            child = fk["child"]["object"]
+                        name = fk["name"] if version == "5.4" else fk["entity"]
+                        parent = fk["parent"]["name"] if version == "5.4" else fk["parent"]["object"]
+                        child = fk["child"]["name"] if version == "5.4" else fk["child"]["object"]
                         parentCol = fk["columns"][0]["parent"]
                         childCol = fk["columns"][0]["child"]
                         print("")
@@ -477,87 +462,15 @@ def printChild(self):
             return f"Name: {self.name} Entity: {self.entity}  ResourceType: {self.ResourceType} ChildName: {self.childObj[0].name}"  # {print(childObj[0]) for i in childObj: print(childObj[i])}
 
 
-"""
-interested details in rules, functions, resources
-"""
-
-
-def listExpanded(path: str):
-    for dirpath, dirs, files in os.walk(path):
-        path = dirpath.split(os.sep)
-        if os.path.basename(dirpath) in [
-            "filters",
-            "request_events",
-            "sorts" "timers",
-            "request_events",
-        ]:
-            continue
-
-        if os.path.basename(dirpath) == "rules":
-            rules = rules(dirpath)
-            for r in rules:
-                print(f"Entity: {r.entity}, Name: {r.name}, RuleType: {r.ruleType}")
-            # break
-            continue
-
-        if dirpath.endswith("data_sources"):
-            dataSource(files)
-            continue
-        if os.path.basename(dirpath) == "resources":
-            resList = resources(dirpath)
-            print(len(resList))
-            for r in resList:
-                print(r)
-                printChild(r)
-            # break
-            continue
-        if os.path.basename(dirpath) == "security":
-            securityRoles(dirpath)
-            continue
-
-        print("|", (len(path)) * "---", "[", os.path.basename(dirpath), "]")
-        for f in files:
-            if f in [
-                "apioptions.json",
-                "ReadMe.md",
-                ".DS_Store",
-                "authtokens",
-                "filters",
-                "request_events",
-                "sorts",
-                "timers",
-                "request_events",
-            ]:
-                continue
-            print("|", len(path) * "---", f)
-            fname = os.path.join(dirpath, f)
-            if f == "relationships.json":
-                relationships(fname)
-                continue
-            if fname.endswith(".json"):
-                with open(fname) as myfile:
-                    d = myfile.read()
-                    j = json.loads(d)
-                    print(d)
-            if fname.endswith(".js"):
-                with open(fname) as myfile:
-                    d = myfile.read()
-                    print(fixup(d))
-            if fname.endswith(".sql"):
-                with open(fname) as myfile:
-                    d = myfile.read()
-                    print(d)
-
-
-def printCurlTests(resObj: ResourceObj):
+def printCurlTests(resObj: ResourceObj, apiURL: str):
     print("")
-    print("CURL TESTS")
+    #print("CURL TESTS")
     if resObj.isActive:
         name = resObj.name.lower()
         entity = resObj.entity
         filter_by = "?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
-        print(f"ECHO calling Entity {entity} using: {name}{filter_by}")
-        print(f"curl \"http://localhost:5656/{name}{filter_by}\"\\")
+        print(f"ECHO calling Entity {entity} using: {apiURL}/{name}{filter_by}")
+        print(f"curl \"http://localhost:5656{apiURL}/{name}{filter_by}\"\\")
         print("         -H 'accept: application/vnd.api+json' \\")
         print("         -H 'Content-Type: application/json'")
         print("")
@@ -596,7 +509,7 @@ def listDirs(path: Path, section: str = "all"):
             print("    CURL tests for each UserResource endpoint")
             print("================================================")
             for resObj in resList:
-                printCurlTests(resObj)
+                printCurlTests(resObj, apiURL)
             
             print("#FreeSQL TODO section to ALS api/customize_api.py")
             for resObj in resList:
@@ -637,11 +550,7 @@ def listDirs(path: Path, section: str = "all"):
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-"""
-    projectName = demo
-    reposLocation = f"{reposLocation}/{projectName}"
- = ~/CALiveAPICreator.repository
-"""
+
 projectName = "b2bderbynw"
 apiURL = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
@@ -650,7 +559,7 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "resources" # all is default or resources, rules, etc.s
+section = "all" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
    main()
