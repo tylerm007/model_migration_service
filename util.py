@@ -98,4 +98,4 @@ def fixupSQL(sql):
     sql = sql.replace("@{",":",40)
     sql = sql.replace("\"","\\\"",40)
     # dealing with double quotes and single quotes
-    return f"\"{sql}\""
+    return f"{sql}"

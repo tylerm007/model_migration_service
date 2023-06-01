@@ -89,7 +89,8 @@ class ResourceObj:
     def PrintResource(self, version: str, apiURL: str = ""):
         # for r in resList:
         if not self.isActive or self.ResourceType != "TableBased":
-            print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
+            #print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
+            self.printFreeSQL(apiURL)
             return
         space = "        "
         name = self.name.lower()
@@ -132,7 +133,8 @@ class ResourceObj:
 
     def printChildren(self, parentName: str, version: str, i: int):
         space = "        "
-        multipleChildren = "" if len(self.childObj) >= 1 else "["
+        multipleChildren = True if len(self.childObj) > 1 else False
+        childCnt = 0
         for child in self.childObj:
             if child.ResourceType != "TableBased":
                 continue
@@ -141,8 +143,11 @@ class ResourceObj:
             childName = childName.replace("_","",2)
             attrName = child.findAttrName()
             fkey = child.createJoinOrForeignKey()
-            print(i * f'{space}',f',include=UserResource{multipleChildren}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
+            include = "include=" if childCnt == 0  else ""
+            openBracket = "[" if childCnt == 0  else ""
+            print(i * f'{space}',f',{include}UserResource{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
             child.printResAttrs(version, i)
+            childCnt = childCnt + 1
             if attrName is not None:
                 joinType = (
                     "join" if child.jsonObj["isCollection"] is True else "joinParent"
@@ -152,17 +157,12 @@ class ResourceObj:
                     print(i * f"{space}",f",isParent=True")
                 if version != "5.4" and child.jsonObj["isCombined"]:
                     print(i * f"{space}",f",isCombined=True")
-                # print(
-                #   f"{space}Resource.{joinType}({parent_name}, {childName}, models.{resource.entity}.{attrName[1]}, {isCombined})"
-                # )
-                # else:
-                # print(
-                #    f"{space}Resource.{joinType}({parent_name}, {childName}, models.{child.entity}.{attrName[0]})"
-                # )
-            child.printGetFunc(parentName, i + 1)
+                
+            child.printGetFunc(parentName, i)
             child.printChildren(parentName, version, i + 1)
             #print(f"{space},")
-            print(i * f"{space}",f"{multipleChildren})")
+        if childCnt > 1:
+            print(i * f"{space}","]")
 
     def createJoinOrForeignKey(self):
         attrName = self.findAttrName()
@@ -173,7 +173,7 @@ class ResourceObj:
             result = ",join_on=["    
             sep = ""        
             for join in attrName:
-                result += f"{sep}((models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
+                result += f"{sep}(models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
                 sep = ","
             result += "]"
         return result
@@ -194,18 +194,18 @@ class ResourceObj:
             space = "        "
             print(i * f"{space}",f",fields=[{fields}]")
         if jDict.filter is not None:
-            print(f"{space}",f"#,filter_by=({jDict.filter})")
+            print(i * f"{space}",f"#,filter_by=({jDict.filter})")
         order = jDict.order if version == '5.4' else jDict.sort
         if version == '5.4' and jDict.order is not None:
-             print(f"{space}",f",order_by=((models.{self.entity}.{order})")
+             print(i * f"{space}",f",order_by=(models.{self.entity}.{order})")
         if version != '5.4' and jDict.sort is not None:
-             print(f"{space}",f",order_by=((models.{self.entity}.{order})")
+             print(i * f"{space}",f",order_by=(models.{self.entity}.{order})")
 
     def printGetFunc(self, parentName: str, i: int):
         space = "        "
         if self._getJSObj is not None:
             fn = f"fn_{parentName}_{self._name}_{self.entity}_event"
-            print(i * f"{space}",f",calling=({fn})")
+            print(i * f"{space}",f",calling=({fn.lower()})")
 
 
     def findAttrName(self) -> list:
@@ -229,13 +229,24 @@ class ResourceObj:
     
     def printFreeSQL(self, apiURL: str = ""):
         # Return the SQL statement used by a FreeSQL query
-        space = "        "
-        if not self.isActive or self.ResourceType != "FreeSQL":
+        if self.ResourceType != "FreeSQL" or not self.isActive:
             return
-        print("")
+        print(f"    #FreeSQL resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
         name = self.name.lower()
-        print(f"def get_{name}():") #TODO - build getFramework for FreeSQL
+        space = "        "
+        print(f"    @app.route('{apiURL}/{name}')")
+        print(f"    def {name}():")
+        print(f'{space}sql = get_{self.name}(request.args)')
+        print(f'{space}return FreeSQL(sqlExpression=sql).execute(request.args)')
+        print("")
+       
+        print(f"def get_{name}(*args):")
+        print(f'{space}pass')
+        print(f'{space}#argValue = args.get("argValueName")')
+        print(f'{space}"""')
         print(f"{space}return {fixupSQL(self.jsSQL)}")
+        print(f'{space}"""')
+        print("")
 
 if __name__ == "__main__":
     jsonObj = {
@@ -252,7 +263,7 @@ if __name__ == "__main__":
         ],
     }
     resObj = ResourceObj(parentName="v1", parentDir="", jsonObj=jsonObj)
-    resObj.PrintResource("5.4","/rest/default/v1")
+    resObj.PrintResource("5.4","/rest/default/nw/v1")
     resObj.PrintResourceFunctions("root", "5.4")
-    resObj.printFreeSQL("/rest/default/v1/nw")
+    resObj.printFreeSQL("/rest/default/nw/v1")
 
