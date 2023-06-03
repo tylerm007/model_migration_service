@@ -87,24 +87,21 @@ class ResourceObj:
         
 
     def PrintResource(self, version: str, apiURL: str = ""):
-        # for r in resList:
         if not self.isActive or self.ResourceType != "TableBased":
-            #print(f"    #Skipping resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
             self.printFreeSQL(apiURL)
-            return
-        space = "        "
-        name = self.name.lower()
-        entity = self.entity
-        # print(f"#{r} s")
-        print(f"    @app.route('{apiURL}/{name}')")
-        print(f"    def {name}():")
-        print(f'{space}root = UserResource(models.{entity},"{self.name}"')
-        self.printResAttrs(version, 1)
-        self.printGetFunc(name, 1)
-        self.printChildren(name, version, 1)
-        print(f"{space})")
-        print(f"{space}return root.Execute(request.args)")
-        print("")
+        else:
+            space = "        "
+            name = self.name.lower()
+            entity = self.entity
+            print(f"    @app.route('{apiURL}/{name}', methods=['GET', 'POST','PUT','OPTIONS'])")
+            print(f"    def {name}():")
+            print(f'{space}root = UserResource(models.{entity},"{self.name}"')
+            self.printResAttrs(version, 1)
+            self.printGetFunc(name, 1)
+            self.printChildren(name, version, 1)
+            print(f"{space})")
+            print(f"{space}return root.Execute(request)")
+            print("")
         
 
     def PrintResourceFunctions(self, parentName: str, version: str):
