@@ -136,9 +136,9 @@ class ResourceObj:
             childName = childName.replace("_","",2)
             attrName = child.findAttrName()
             fkey = child.createJoinOrForeignKey()
-            include = "include=" if childCnt == 0  else ""
+            childInclude = "children=" if childCnt == 0  else ""
             openBracket = "[" if childCnt == 0  else ""
-            print(i * f'{space}',f',{include}UserResource{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
+            print(i * f'{space}',f',{childInclude}UserResource{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
             child.printResAttrs(version, i)
             childCnt = childCnt + 1
             if attrName is not None:
