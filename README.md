@@ -142,12 +142,12 @@ the isParent= will treat MANY_TO_ONE relationship and return the parent row
     def partnerorder():
         root = UserResource(models.Order,"PartnerOrder"
               ,fields=[ (models.Order.CustomerNumber, "CustomerNumber"), (models.Order.OrderNumber, "OrderNumber")]
-              ,include=UserResource(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
+              ,children=UserResource(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
               ,fields=[ (models.Shipper.CompanyName, "CompanyName")]
               ,isParent=True
-                 ,include=UserResource(model_class=models.OrderDetail,alias="Items" ,foreign_key=models.OrderDetail.OrderId
+                 ,children=UserResource(model_class=models.OrderDetail,alias="Items" ,foreign_key=models.OrderDetail.OrderId
                  ,fields=[ (models.OrderDetail.ProductNumber, "ProductNumber"), (models.OrderDetail.Quantity, "Quantity")]
-                         ,include=UserResource(model_class=models.Product,alias="Product" ,foreign_key=models.Product.ProductId
+                         ,children=UserResource(model_class=models.Product,alias="Product" ,foreign_key=models.Product.ProductId
                          ,fields=[ (models.Product.ProductName, "ProductName")]
                          ,isParent=True
                          )
