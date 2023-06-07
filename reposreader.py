@@ -198,7 +198,7 @@ def dataSource(path: Path):
         for tbl in tableList:
             name = singular(tbl)
             print(f"ECHO calling endpoint: {name}?page[limit]=1")
-            print(f"curl \"http://localhost:5656/api/{name}?page%5Blimit%5D=1\" \\")
+            print(f"curl \"http://localhost:5656/api/{name}?page%5Blimit%5D=1\"")
             print("         -H 'accept: application/vnd.api+json' \\")
             print("         -H 'Content-Type: application/json' ")
             print("")
@@ -468,9 +468,9 @@ def printCurlTests(resObj: ResourceObj, apiURL: str):
     if resObj.isActive:
         name = resObj.name.lower()
         entity = resObj.entity
-        filter_by = "?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
+        filter_by = "/1?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
         print(f"ECHO calling Entity {entity} using: {apiURL}/{name}{filter_by}")
-        print(f"curl \"http://localhost:5656{apiURL}/{name}{filter_by}\"\\")
+        print(f"curl \"http://localhost:5656{apiURL}/{name}{filter_by}\"")
         print("         -H 'accept: application/vnd.api+json' \\")
         print("         -H 'Content-Type: application/json'")
         print("")
@@ -511,7 +511,7 @@ def listDirs(path: Path, section: str = "all"):
             for resObj in resList:
                 printCurlTests(resObj, apiURL)
             
-            print("#FreeSQL TODO section to ALS api/customize_api.py")
+            print("#FreeSQL section to ALS api/customize_api.py")
             for resObj in resList:
                 resObj.printFreeSQL(apiURL)
             continue
@@ -551,7 +551,7 @@ def listDirs(path: Path, section: str = "all"):
 
 
 
-projectName = "b2bderbynw"
+projectName =  "b2bderbynw"
 apiURL = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
@@ -559,10 +559,10 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "resources" # all is default or resources, rules, etc.s
+section = "all" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-   main()
+    main()
 #lse:  
 #    local testing and debugging
 #    listDirs(basepath, section)

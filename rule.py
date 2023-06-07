@@ -133,3 +133,24 @@ class RuleObj:
                 print(f"#Rule.{ruleType}(...TODO...)")
             
         print("")
+
+if __name__ == "__main__":
+    jsonObj ={
+        "name": "CheckCredit",
+        "entity": "Customers",
+        "isActive": True,
+        "ruleType": "validation",
+        "codeType": "JavaScript",
+        "errorMessage": "Transaction cannot be completed - Balance ({Balance|#,##0.00}) exceeds Credit Limit ({CreditLimit|#,##0.00})",
+        "problemAttributes": [
+        ],
+        "isAutoTitle": True,
+        "title": "Validation: return row.Balance <= row.CreditLimit;",
+        "comments": "Observe Error message insertion points {}",
+        "topics": [
+            "Check Credit"
+        ]
+    }
+    js = "return row.Balance <= row.CreditLimit;"
+    ruleObj = RuleObj(jsonObj=jsonObj,jsObj=js)
+    ruleObj.ruleTypes()

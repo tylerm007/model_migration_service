@@ -126,7 +126,6 @@ class ResourceObj:
 
     def printChildren(self, parentName: str, version: str, i: int):
         space = "\t"
-        multipleChildren = True if len(self.childObj) > 1 else False
         childCnt = 0
         for child in self.childObj:
             if child.ResourceType != "TableBased":
@@ -147,9 +146,9 @@ class ResourceObj:
                 )
                 # if joinType == "joinParent":
                 if not child.jsonObj["isCollection"]:
-                    print(i * f"{space}",f",isParent=True")
+                    print(i * f"{space},isParent=True")
                 if version != "5.4" and child.jsonObj["isCombined"]:
-                    print(i * f"{space}",f",isCombined=True")
+                    print(i * f"{space},isCombined=True")
                 
             child.printGetFunc(parentName, i)
             child.printChildren(parentName, version, i + 1)
@@ -226,10 +225,10 @@ class ResourceObj:
         print(f"    #FreeSQL resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
         name = self.name.lower()
         space = "\t"
-        print(f"@app.route('{apiURL}/{name}')")
+        print(f"@app.route('{apiURL}/{name}', , methods=['GET'])")
         print(f"def {name}():")
-        print(f'{space}sql = get_{self.name}(request.args)')
-        print(f'{space}return FreeSQL(sqlExpression=sql).execute(request.args)')
+        print(f'{space}sql = get_{self.name}(request)')
+        print(f'{space}return FreeSQL(sqlExpression=sql).execute(request)')
         print("")
        
         print(f"def get_{name}(*args):")
