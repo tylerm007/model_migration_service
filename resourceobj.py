@@ -90,17 +90,17 @@ class ResourceObj:
         if not self.isActive or self.ResourceType != "TableBased":
             self.printFreeSQL(apiURL)
         else:
-            space = "        "
+            space = "\t"
             name = self.name.lower()
             entity = self.entity
-            print(f"    @app.route('{apiURL}/{name}', methods=['GET', 'POST','PUT','OPTIONS'])")
-            print(f"    def {name}():")
+            print(f"@app.route('{apiURL}/{name}/<id>', methods=['GET', 'POST','PUT','OPTIONS'])")
+            print(f"def {name}(id):")
             print(f'{space}root = UserResource(models.{entity},"{self.name}"')
             self.printResAttrs(version, 1)
             self.printGetFunc(name, 1)
             self.printChildren(name, version, 1)
             print(f"{space})")
-            print(f"{space}return root.Execute(request)")
+            print(f"{space}return root.Execute(request, id)")
             print("")
         
 
@@ -113,7 +113,7 @@ class ResourceObj:
         if self.getJSObj is not None:
             name = self.name.lower()
             entity = self.entity.lower()
-            space = "          "
+            space = "\t"
             print(f"{space}def fn_{parentName}_{name}_{entity}_event(row: dict, tableRow: dict, parentRow: dict):")
             print(f"{space}{space}pass")
             print("'''")
@@ -125,7 +125,7 @@ class ResourceObj:
                 child.PrintResourceFunctions(parentName, version)
 
     def printChildren(self, parentName: str, version: str, i: int):
-        space = "        "
+        space = "\t"
         multipleChildren = True if len(self.childObj) > 1 else False
         childCnt = 0
         for child in self.childObj:
@@ -184,7 +184,7 @@ class ResourceObj:
                 attrName = attr["attribute"] if version == "5.4" else attr["alias"]
                 fields += f'{sep} (models.{self.entity}.{attrName}, "{attrName}")'
                 sep = ","
-            space = "        "
+            space = "\t"
             print(i * f"{space}",f",fields=[{fields}]")
         if jDict.filter is not None:
             print(i * f"{space}",f"#,filter_by=({jDict.filter})")
@@ -195,10 +195,9 @@ class ResourceObj:
              print(i * f"{space}",f",order_by=(models.{self.entity}.{order})")
 
     def printGetFunc(self, parentName: str, i: int):
-        space = "        "
         if self._getJSObj is not None:
             fn = f"fn_{parentName}_{self._name}_{self.entity}_event"
-            print(i * f"{space}",f",calling=({fn.lower()})")
+            print(i * f"\t",f",calling=({fn.lower()})")
 
 
     def findAttrName(self) -> list:
@@ -226,9 +225,9 @@ class ResourceObj:
             return
         print(f"    #FreeSQL resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
         name = self.name.lower()
-        space = "        "
-        print(f"    @app.route('{apiURL}/{name}')")
-        print(f"    def {name}():")
+        space = "\t"
+        print(f"@app.route('{apiURL}/{name}')")
+        print(f"def {name}():")
         print(f'{space}sql = get_{self.name}(request.args)')
         print(f'{space}return FreeSQL(sqlExpression=sql).execute(request.args)')
         print("")
