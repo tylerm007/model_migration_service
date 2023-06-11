@@ -58,6 +58,7 @@ class ResourceObj:
         self.sqlObj = None if sqlObj is None else sqlObj
         self.isActive = True
         self.childObj = [] if childObj is None else childObj
+        self._parentEntity = None
 
     @property
     def name(self):
@@ -95,7 +96,7 @@ class ResourceObj:
             entity = self.entity
             print(f"@app.route('{apiURL}/{name}/<id>', methods=['GET', 'POST','PUT','OPTIONS'])")
             print(f"def {name}(id):")
-            print(f'{space}root = UserResource(models.{entity},"{self.name}"')
+            print(f'{space}root = CustomEndpoint(models.{entity},"{self.name}"')
             self.printResAttrs(version, 1)
             self.printGetFunc(name, 1)
             self.printChildren(name, version, 1)
@@ -127,9 +128,11 @@ class ResourceObj:
     def printChildren(self, parentName: str, version: str, i: int):
         space = "\t"
         childCnt = 0
+       
         for child in self.childObj:
             if child.ResourceType != "TableBased":
                 continue
+            child._parentEntity = self
             cname = child._name
             childName = f"{cname}"
             childName = childName.replace("_","",2)
@@ -137,7 +140,7 @@ class ResourceObj:
             fkey = child.createJoinOrForeignKey()
             childInclude = "children=" if childCnt == 0  else ""
             openBracket = "[" if childCnt == 0  else ""
-            print(i * f'{space}',f',{childInclude}UserResource{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
+            print(i * f'{space}',f',{childInclude}CustomEndpoint{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
             child.printResAttrs(version, i)
             childCnt = childCnt + 1
             if attrName is not None:
@@ -145,10 +148,10 @@ class ResourceObj:
                     "join" if child.jsonObj["isCollection"] is True else "joinParent"
                 )
                 # if joinType == "joinParent":
-                if not child.jsonObj["isCollection"]:
-                    print(i * f"{space},isParent=True")
+                if child.jsonObj["isCollection"]:
+                    print(i * f"{space}",",isParent=True")
                 if version != "5.4" and child.jsonObj["isCombined"]:
-                    print(i * f"{space},isCombined=True")
+                    print(i * f"{space}","isCombined=True")
                 
             child.printGetFunc(parentName, i)
             child.printChildren(parentName, version, i + 1)
@@ -159,13 +162,20 @@ class ResourceObj:
     def createJoinOrForeignKey(self):
         attrName = self.findAttrName()
         result = ""
+        isParent = self.jsonObj and self.jsonObj["isCollection"]
         if len(attrName) == 1:
-            result = f",join_on=models.{self.entity}.{attrName[0].child}" 
+            if isParent:
+                result = f",join_on=models.{self._parentEntity.entity}.{attrName[0].parent}" 
+            else:
+                result = f",join_on=models.{self.entity}.{attrName[0].child}" 
         elif len(attrName) > 1:
             result = ",join_on=["    
             sep = ""        
             for join in attrName:
-                result += f"{sep}(models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
+                if isParent:
+                    result += f"{sep}(models.{self._parentEntity.entity}.{join.parent}, models.{self.entity}.{join.child})" 
+                else:
+                    result += f"{sep}(models.{self.entity}.{join.parent}, models.{self.entity}.{join.child})" 
                 sep = ","
             result += "]"
         return result
