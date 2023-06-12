@@ -1,8 +1,15 @@
 # Archimedes
 
-This project reads the CALiveAPICreator repos to parse rules into objects. This can help understand how to migrate to [Api Logic Server Docs](https://apilogicserver.github.io/Docs/) (ALS)
-Limitation - this is a tool and requires some manual fixup of rules, functions, or resources. Resources are limited to TableBased in this version (JavaScript and FreeSQL in future releases).  ALS table and column names may not match 100%.
-Python is not JavaScript and some fixup is required as well. Finally - there are built in features in LAC not currently in ALS (e.g. SysUtility)
+This project reads the CA Live API Creator (LAC) repos to parse objects into a report that can be used by API Logic Server (ALS). This document can help understand how to process to [Migrate from LAC to ALS](https://docs.google.com/document/d/1ULL9sMepOQd4SEwTEl0OP7p7PzEy56Rw2FGkPigUrMc/edit?usp=sharing)
+
+For more information on ALS see -
+[Api Logic Server Docs](https://apilogicserver.github.io/Docs/) 
+
+Limitation - this is a tool and requires some manual fixup of rules, functions, or resources. Resources are limited to TableBased and FreeSQL in this version.  ALS table and column names may not match 100%.
+
+The JavaScript requires some fixup to Python and some LAC built-in may not be supported. Finally - there are a features in LAC not currently in ALS (e.g. SysUtility).  
+
+
 
 ## Install
 ```
@@ -14,7 +21,7 @@ pip install -r requirements.txt
 ```
 
 ## Run
-point to you LAC repository home and  and select the project name from the list of 'apis'. The optional sections will only print the directory named.
+Point to you LAC repository home and  and select the project name from the list of 'apis'. The optional sections will only print the directory named.
 ```
 $python3 reposreader.py --help
 Generate a report of an existing CA Live API Creator Repository
@@ -40,7 +47,7 @@ This version skips the following files
 ```
 
 ## Rules
-The code will attempt to define a function and rule in Api Logic Server format. It will also try to convert JavaScript to Python - formatting will need to be done manually
+The code will attempt to define a function and rule in Api Logic Server format. It will also try to convert JavaScript to Python - formatting will need to be done manually. Copy the report content to your ALS project directory api/customize_api.py.
 ```
 =========================
        rules 
@@ -91,7 +98,7 @@ ALTER TABLE ADD CONSTRAINT fk_lineitem_purchaseorder FOREIGN KEY LineItem(order_
 ```
 
 ## Security
-List of users and roles (note views and procedures not listed in this version)
+List of users and roles (note views and procedures not listed in this version) - this section can be used to configure the ALS role based security.
 ```
 =========================
        security 
@@ -107,6 +114,14 @@ User: admin Roles: ['API Owner']
 
 ## Resources
 The resource list is user defined endpoints.  Some are nested documents shown as D - directory and F - File. 
+
+To support Resources - Copy system/custom_endpoint.py and system/free_sql_py to ALS api/ directory.
+
+and include these in your import:
+```
+from api.custom_endpoint import CustomEndpoint
+from api.free_sql import FreeSQL
+```
 ```
 =========================
        RESOURCES 
@@ -121,6 +136,7 @@ The resource list is user defined endpoints.  Some are nested documents shown as
 | ------------ F Product.json Entity: product Join: ("product_number" = [product_number]) Attrs: (name,price,product_number)
 ```
 ### safrs.JSON API example:
+The SAFRS jsonapi allows the user to create a custom API to shape the result to define fields and child/parent relationships. The result requires the client to re-shape the result. 
 ```
 curl -X 'GET' \
   'http://localhost:5656/api/Customer/ALFKI/?include=OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product&fields%5BCustomer%5D=Id%2CCompanyName%2CContactName%2CContactTitle%2CAddress%2CCity%2CRegion%2CPostalCode%2CCountry%2CPhone%2CFax%2CBalance%2CCreditLimit%2COrderCount%2CUnpaidOrderCount%2CClient_id' \
@@ -131,30 +147,32 @@ Note: entities following relationships
 include=OrderList,OrderList.OrderDetailList,OrderList.OrderDetailList.Product
 ```
 
-### Resources are linked and nested - this becomes the basis for new endpoints (root)
-The UserResource defines the SAFRS table, with an optional alias
+### A CustomEndpoint are linked and nested - this becomes the basis for new endpoints 
+The CustomEndpoint defines the SAFRS table, with an optional alias
 the foreign_key= is the attribute to use to match the parent primaryKey value
 the optional fields= will allow the result to be reshaped 
 the calling will pass each row to the defined function (create virtual attributes)
 the isParent= will treat MANY_TO_ONE relationship and return the parent row 
 ```
-    @@app.route('/partnerorder')
-    def partnerorder():
-        root = UserResource(models.Order,"PartnerOrder"
+    @@app.route('/partnerorder/<id>, methods=['GET'])
+    def partnerorder(id):
+        root = CustomEndpoint(models.Order,"PartnerOrder"
               ,fields=[ (models.Order.CustomerNumber, "CustomerNumber"), (models.Order.OrderNumber, "OrderNumber")]
-              ,children=UserResource(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
+              ,children=CustomEndpoint(model_class=models.Shipper,alias="Shipper" ,foreign_key=models.Shipper.ShipVia
               ,fields=[ (models.Shipper.CompanyName, "CompanyName")]
               ,isParent=True
-                 ,children=UserResource(model_class=models.OrderDetail,alias="Items" ,foreign_key=models.OrderDetail.OrderId
+                 ,children=CustomEndpoint(model_class=models.OrderDetail,alias="Items" ,foreign_key=models.OrderDetail.OrderId
                  ,fields=[ (models.OrderDetail.ProductNumber, "ProductNumber"), (models.OrderDetail.Quantity, "Quantity")]
-                         ,children=UserResource(model_class=models.Product,alias="Product" ,foreign_key=models.Product.ProductId
+                         ,children=CustomEndpoint(model_class=models.Product,alias="Product" ,foreign_key=models.Product.ProductId
                          ,fields=[ (models.Product.ProductName, "ProductName")]
                          ,isParent=True
                          )
                  )
             )
         )
-        return root.Execute(request.args)
+        return root.execute(request, id)
+        #or use SAFRS jsonapi
+        #return root.get(request, "OrderList%2COrderList.OrderDetailList%2COrderList.OrderDetailList.Product", id)
 
     def myGetFunction(row: any):
        row["myVirtualAttribute"] = "foo"

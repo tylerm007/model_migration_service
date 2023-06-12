@@ -101,7 +101,7 @@ class ResourceObj:
             self.printGetFunc(name, 1)
             self.printChildren(name, version, 1)
             print(f"{space})")
-            print(f"{space}return root.Execute(request, id)")
+            print(f"{space}return root.execute(request, id)")
             print("")
         
 
@@ -235,7 +235,7 @@ class ResourceObj:
         print(f"    #FreeSQL resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
         name = self.name.lower()
         space = "\t"
-        print(f"@app.route('{apiURL}/{name}', , methods=['GET'])")
+        print(f"@app.route('{apiURL}/{name}', methods=['GET'])")
         print(f"def {name}():")
         print(f'{space}sql = get_{self.name}(request)')
         print(f'{space}return FreeSQL(sqlExpression=sql).execute(request)')
