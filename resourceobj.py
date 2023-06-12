@@ -96,7 +96,7 @@ class ResourceObj:
             entity = self.entity
             print(f"@app.route('{apiURL}/{name}/<id>', methods=['GET', 'POST','PUT','OPTIONS'])")
             print(f"def {name}(id):")
-            print(f'{space}root = CustomEndpoint(models.{entity},"{self.name}"')
+            print(f'{space}root = CustomEndpoint(model_class=models.{entity},alias="{self.name}"')
             self.printResAttrs(version, 1)
             self.printGetFunc(name, 1)
             self.printChildren(name, version, 1)
@@ -139,7 +139,7 @@ class ResourceObj:
             attrName = child.findAttrName()
             fkey = child.createJoinOrForeignKey()
             childInclude = "children=" if childCnt == 0  else ""
-            openBracket = "[" if childCnt == 0  else ""
+            openBracket = "[" if childCnt == 0  and len(self.childObj) > 1 else ""
             print(i * f'{space}',f',{childInclude}CustomEndpoint{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
             child.printResAttrs(version, i)
             childCnt = childCnt + 1
@@ -148,26 +148,26 @@ class ResourceObj:
                     "join" if child.jsonObj["isCollection"] is True else "joinParent"
                 )
                 # if joinType == "joinParent":
-                if child.jsonObj["isCollection"]:
+                if not child.jsonObj["isCollection"]:
                     print(i * f"{space}",",isParent=True")
                 if version != "5.4" and child.jsonObj["isCombined"]:
                     print(i * f"{space}","isCombined=True")
                 
             child.printGetFunc(parentName, i)
             child.printChildren(parentName, version, i + 1)
-            #print(f"{space},")
+            print(i * f"{space}",")")
         if childCnt > 1:
             print(i * f"{space}","]")
 
     def createJoinOrForeignKey(self):
         attrName = self.findAttrName()
         result = ""
-        isParent = self.jsonObj and self.jsonObj["isCollection"]
+        isParent = self.jsonObj and not self.jsonObj["isCollection"]
         if len(attrName) == 1:
             if isParent:
                 result = f",join_on=models.{self._parentEntity.entity}.{attrName[0].parent}" 
             else:
-                result = f",join_on=models.{self.entity}.{attrName[0].child}" 
+                result = f",join_on=models.{self.entity}.{attrName[0].parent}" 
         elif len(attrName) > 1:
             result = ",join_on=["    
             sep = ""        
@@ -198,10 +198,16 @@ class ResourceObj:
         if jDict.filter is not None:
             print(i * f"{space}",f"#,filter_by=({jDict.filter})")
         order = jDict.order if version == '5.4' else jDict.sort
+        if order is not None:
+            sign = ""
+            order = order.replace(" asc","")
+            if "desc" in order:
+                order = order.replace(" desc","")
+                sign = "-"
         if version == '5.4' and jDict.order is not None:
-             print(i * f"{space}",f",order_by=(models.{self.entity}.{order})")
+             print(i * f"{space}",f",order_by=(models.{self.entity}.{sign}{order})")
         if version != '5.4' and jDict.sort is not None:
-             print(i * f"{space}",f",order_by=(models.{self.entity}.{order})")
+             print(i * f"{space}",f",order_by=(models.{self.entity}.{sign}{order})")
 
     def printGetFunc(self, parentName: str, i: int):
         if self._getJSObj is not None:

@@ -44,11 +44,12 @@ def main(calling_args=None):
         projectName = args.project or "demo"
         reposLocation = args.repos
         sections = args.section or "all"
+        apiURL = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL 
        
         basepath = f"{reposLocation}/{apiroot}/{projectName}"
     try:
         readTableAlias()
-        listDirs(basepath, sections)
+        listDirs(basepath, sections, apiURL)
     except Exception as ex:
         print(f"Error running  {ex}")
 
@@ -476,7 +477,7 @@ def printCurlTests(resObj: ResourceObj, apiURL: str):
         print("")
 
 
-def listDirs(path: Path, section: str = "all"):
+def listDirs(path: Path, section: str = "all", apiURL: str=""):
     setVersion(path)
     print(f"LAC Version: {version}")
     for entry in os.listdir(path):
@@ -550,9 +551,8 @@ def listDirs(path: Path, section: str = "all"):
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-
 projectName =  "b2bderbynw"
-apiURL = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
+apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
@@ -565,4 +565,4 @@ if __name__ == "__main__":
     main()
 #lse:  
 #    local testing and debugging
-#    listDirs(basepath, section)
+#    listDirs(basepath, section, apiurl)
