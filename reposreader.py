@@ -251,11 +251,12 @@ def printCols(jsonObj: object):
     entity = "" if jsonObj["resourceType"] != "TableBased" else jsonObj["entity"]
     attrs = ""
     join = ""
-    filter = ""
+    filterStr = ""
+    isParent = ""
     if "filter" in jsonObj:
         f = jsonObj["filter"]
         if f != None:
-            filter = f"Filter: ({f})"
+            filterStr = f"Filter: ({f})"
     if "join" in jsonObj:
         join = jsonObj["join"]
         join = join.replace("\\", "", 10)
@@ -267,7 +268,9 @@ def printCols(jsonObj: object):
             attrs += sep + a["attribute"]
             sep = ","
         attrs = f"Attrs: ({attrs})"
-    return f"{entity} {join} {attrs}) {filter}"
+    if "isCollection" in jsonObj:
+        isParent = "" if jsonObj["isCollection"]  else "isParent=True"
+    return f"{entity} {join} {attrs}) {filterStr} {isParent}"
 
 
 def getRootResources(resourceList: object):
@@ -562,7 +565,7 @@ command = "not set"
 section = "resources" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-#    main()
+    main()
 #lse:  
 #    local testing and debugging
     listDirs(basepath, section, apiurl)
