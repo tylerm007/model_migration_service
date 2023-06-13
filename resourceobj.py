@@ -125,7 +125,7 @@ class ResourceObj:
             for child in self.childObj:
                 child.PrintResourceFunctions(parentName, version)
 
-    def printChildren(self, parentName: str, version: str, i: int):
+    def printChildren(self, parentName: str, version: str, nextLevel: int):
         space = "\t"
         childCnt = 0
        
@@ -140,8 +140,8 @@ class ResourceObj:
             fkey = child.createJoinOrForeignKey()
             childInclude = "children=" if childCnt == 0  else ""
             openBracket = "[" if childCnt == 0  and len(self.childObj) > 1 else ""
-            print(i * f'{space}',f',{childInclude}CustomEndpoint{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
-            child.printResAttrs(version, i)
+            print(nextLevel * f'{space}',f',{childInclude}CustomEndpoint{openBracket}(model_class=models.{child.entity},alias="{cname}" {fkey}', end="\n")
+            child.printResAttrs(version, nextLevel)
             childCnt = childCnt + 1
             if attrName is not None:
                 joinType = (
@@ -149,15 +149,15 @@ class ResourceObj:
                 )
                 # if joinType == "joinParent":
                 if not child.jsonObj["isCollection"]:
-                    print(i * f"{space}",",isParent=True")
+                    print(nextLevel * f"{space}",",isParent=True")
                 if version != "5.4" and child.jsonObj["isCombined"]:
-                    print(i * f"{space}","isCombined=True")
+                    print(nextLevel * f"{space}","isCombined=True")
                 
-            child.printGetFunc(parentName, i)
-            child.printChildren(parentName, version, i + 1)
-            print(i * f"{space}",")")
+            child.printGetFunc(parentName, nextLevel)
+            child.printChildren(parentName, version, nextLevel + 1)
+            print(nextLevel * f"{space}",")")
         if childCnt > 1:
-            print(i * f"{space}","]")
+            print(nextLevel * f"{space}","]")
 
     def createJoinOrForeignKey(self):
         attrName = self.findAttrName()
@@ -180,7 +180,7 @@ class ResourceObj:
             result += "]"
         return result
     
-    def printResAttrs(self, version: str, i: int):
+    def printResAttrs(self, version: str, nextLevel: int):
         if self.jsonObj is None:
             return
         jDict = DotDict(self.jsonObj)
@@ -194,9 +194,9 @@ class ResourceObj:
                 fields += f'{sep} (models.{self.entity}.{attrName}, "{attrName}")'
                 sep = ","
             space = "\t"
-            print(i * f"{space}",f",fields=[{fields}]")
+            print(nextLevel * f"{space}",f",fields=[{fields}]")
         if jDict.filter is not None:
-            print(i * f"{space}",f"#,filter_by=({jDict.filter})")
+            print(nextLevel * f"{space}",f"#,filter_by=({jDict.filter})")
         order = jDict.order if version == '5.4' else jDict.sort
         if order is not None:
             sign = ""
@@ -205,14 +205,14 @@ class ResourceObj:
                 order = order.replace(" desc","")
                 sign = "-"
         if version == '5.4' and jDict.order is not None:
-             print(i * f"{space}",f",order_by=(models.{self.entity}.{sign}{order})")
+             print(nextLevel * f"{space}",f",order_by=(models.{self.entity}.{sign}{order})")
         if version != '5.4' and jDict.sort is not None:
-             print(i * f"{space}",f",order_by=(models.{self.entity}.{sign}{order})")
+             print(nextLevel * f"{space}",f",order_by=(models.{self.entity}.{sign}{order})")
 
-    def printGetFunc(self, parentName: str, i: int):
+    def printGetFunc(self, parentName: str, nextLevel: int):
         if self._getJSObj is not None:
             fn = f"fn_{parentName}_{self._name}_{self.entity}_event"
-            print(i * f"\t",f",calling=({fn.lower()})")
+            print(nextLevel * f"\t",f",calling=({fn.lower()})")
 
 
     def findAttrName(self) -> list:

@@ -26,8 +26,7 @@ class FreeSQL():
             
             # fixup sql 
             # open connection, cursor, execute , findAll() 
-            args = request.args
-            sql = self.fixup(args)
+            sql = self.fixup(request)
             try:
                 print(f"FreeSQL SQL Expression={sql}")
                 conn_str = db.engine.url
@@ -35,17 +34,19 @@ class FreeSQL():
                 if conn_str.drivername == 'sqlite':
                     cursor = conn.cursor()
                     cur = cursor.execute(sql)
-                    results = [dict((cur.description[i][0], value)
-                        for i, value in enumerate(row)) for row in cur.fetchall()]
+                    results = [{
+                        (cur.description[i][0], value)
+                            for i, value in enumerate(row)
+                        } for row in cur.fetchall()]
                     cur.connection.close()
                 else:
                     cur = conn.cursor(pymysql.cursors.DictCursor)
                     cursor = cur.execute(sql)
                     results = cur.fetchall()
-                data = json.dumps(results, indent=4,default=str) #return Decimal() as str
+                data = json.dumps(results, indent=4,default=str) #TODO return Decimal() as str
               
             except Exception as ex:
-                print(ex)
+                print(f"FreeSQL Error {ex}")
                 return {'error':f"{ex}"}
                 
             return data 
@@ -53,14 +54,14 @@ class FreeSQL():
         def openConnection(self) -> any: #Connection
             # Use the safrs.DB, not db!
             conn_str = db.engine.url
-            host = conn_str.host or "127.0.0.1"
-            port = conn_str.port or "5656"
-            user = conn_str.username
-            pw = conn_str.password
             database = conn_str.database
             if conn_str.drivername == 'sqlite':
                 return sqlite3.connect(database)
             elif conn_str.drivername == 'mysql+pymysql':
+                host = conn_str.host or "127.0.0.1"
+                port = conn_str.port or "5656"
+                user = conn_str.username
+                pw = conn_str.password
                 return  pymysql.connect(
                     host=host,
                     port=port,
@@ -70,10 +71,10 @@ class FreeSQL():
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor)
             else:
-                print(f"Connection database type {conn_str.drivername} not supported by FreeSQL")
+                print(f"FreeSQL Connection to database type {conn_str.drivername} not supported at this time")
                 return None
             
-        def fixup(self, *args):
+        def fixup(self, request):
             """
                 LAC FreeSQL passes these args
                 -- perhaps generate a function
@@ -84,16 +85,29 @@ class FreeSQL():
                 @{ARGUMENT.} may include prefix (e.g. =main:entityName.attrName)
                 @{ORDER}
                 @{arg_attrname}
+                @LIMIT
+                @OFFSET
             """
             sql = self.sqlExpression
             if sql is not None:
-                schema = ""
-                whereStr = "1=1" #args.get("@where")
-                joinStr = ""  #args.get("@join","")
-                orderStr = "1" #args.get("@order","1")
-            
-                sql = sql.replace(":schema",schema, 10)
-                sql = sql.replace(":where",whereStr, 10)
-                sql = sql.replace(":order",orderStr, 10)
-                sql = sql.replace(":join",joinStr, 10)
+                schema = "" #TODO
+                try:
+                    args = request.args
+                    whereStr = args.get("@where") or "1=1" 
+                    joinStr =  args.get("@join") or ""
+                    #orderStr = "1" #args.get("@order","1")
+                    limit = args.get("page[limit]") or 10
+                    offset = args.get("page[offset]") or 0
+                    order_by = args.get("sort") or "1"
+                
+                    sql = sql.replace(":SCHEMA",schema, 10)
+                    sql = sql.replace(":WHERE",whereStr, 10)
+                    sql = sql.replace(":ORDER",order_by, 10)
+                    sql = sql.replace(":JOIN",joinStr, 10)
+                    sql = sql.replace(":LIMIT",limit, 10)
+                    sql = sql.replace(":OFFSET", offset, 10)
+                    #sql = sql.replace(":ORDER",orderStr, 10)
+                except Exception as ex:
+                    print(f"Error {ex}")
+                    
             return sql

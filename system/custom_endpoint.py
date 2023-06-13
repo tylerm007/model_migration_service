@@ -1,6 +1,7 @@
 from __future__ import annotations  # enables Resource self reference
 import sqlalchemy
 import logging
+import contextlib
 from sqlalchemy import Column, Table, ForeignKey
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import relationships, relationship
@@ -192,7 +193,7 @@ class CustomEndpoint():
         #"Manager" in self._model_class._s_relationships.keys() #_s_jsonapi_attrs.keys()
         #rom .jsonapi_formatting import jsonapi_filter_query, jsonapi_filter_list, jsonapi_sort, jsonapi_format_response, paginate
         #self._model_class.__mapper__.relationships.get("Manages").primaryjoin.left or right left.key or right.key
-        resource_logger.debug(f"execute CustomEndpoint on: {self._model_class_name} alias: {self.alias}")
+        resource_logger.debug(f"execute CustomEndpoint on: {self._model_class_name} using alias: {self.alias}")
         filter_by = None
         pkey = self.primaryKey
         key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
@@ -213,7 +214,7 @@ class CustomEndpoint():
             return json.dumps(result)
         except Exception as ex:
             resource_logger.error(f"CustomEndpoint error {ex}")
-            return {"error":ex}
+            return f"'error': {ex}"
 
     def _executeChildren(self):
         """
@@ -268,7 +269,7 @@ class CustomEndpoint():
         model_class = self._model_class
         model_class_name = self._model_class_name
         queryFilter = self._createFilterFromKeys()
-        if queryFilter is None:
+        if queryFilter is None or queryFilter == 'None':
             #query = select(self._model_class)
             if self.filter_by is not None:
                 resource_logger.debug(
@@ -425,11 +426,9 @@ class CustomEndpoint():
             row (dict): this is the parent row
             modifiedRow (dict): this is the same row that has been modified
         """
-        if self.isParent and self.isCombined:
-            pass # we will update row below
-        else:
+        if not self.isParent and not self.isCombined:
             modifiedRow[self.alias] = []
-        self._parentRow  = row
+        self._parentRow  = DotDict(row)
         pkeyValue = row[self.foreignKey.key] if self.isParent and self.foreignKey.key in row else row[self.primaryKey]
         fkey = self.primaryKey  if self.isParent and self.primaryKey in row else self.foreignKey.key if self.foreignKey is not None else None
         for dictRow in self._dictRows:
@@ -459,6 +458,7 @@ class CustomEndpoint():
         # allow adding or changes using defined function
         if self.calling is not None:
             try:
+                resource_logger.debug(f"calling function {self.calling}")
                 self.calling(newRow, tableRow, self._parentRow)
             except Exception as ex:
                 resource_logger.error(f"unable to execute fn {self.calling} error: {ex}")
@@ -566,11 +566,9 @@ class CustomEndpoint():
                 row_as_dict = each_row._asdict()
             else:
                 row_as_dict = each_row.to_dict()
-            if "id" not in row_as_dict:
-                try:
+            if not hasattr(row_as_dict,"id"):
+                with contextlib.suppress(Exception):
                     row_as_dict["id"] = each_row.id
-                except:
-                    pass
             rows.append(row_as_dict)
         return rows
 
@@ -594,11 +592,9 @@ class CustomEndpoint():
         if remove_links_relationships:
             row_as_dict.pop('links')
             row_as_dict.pop('relationships')
-        if "id" not in row_as_dict:
-            try:
-                row_as_dict["id"] = row["id"] if "id" in row else ""
-            except:
-                pass
+        if not hasattr(row_as_dict,"id"):
+             with contextlib.suppress(Exception):
+                row_as_dict["id"] = row["id"] 
         return row_as_dict
 
     def _processChildren(self):
