@@ -47,12 +47,14 @@ class Role():
         self.entityRoleList: list["entityRole"] = []
         
     def printRole(self):
-        print(f"\t{self.roleName} = '{self.roleName}'")
+        roleName = self.roleName.replace(" ","",2)
+        print(f"\t{roleName} = '{self.roleName}'")
         
     def printGrants(self):
+        roleName = self.roleName.replace(" ","",2)
         for erl in self.entityRoleList:
             print(f"#Access Levels: {erl.accessLevels} TablePermissions: {self.tablePermission} description: {erl.description}")
-            print(f"Grant(on_entity=models.{erl.entityName}, to_role=Roles.{self.roleName})")
+            print(f"Grant(on_entity=models.{erl.entityName}, to_role=Roles.{roleName})")
             print("")
         
     def loadEntities(self, jsonObj: dict):

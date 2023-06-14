@@ -236,6 +236,25 @@ def securityRoles(thisPath) -> list:
                     roleList.append(role)
     return roleList
 
+def securityUsers(thisPath) -> list:
+    path = f"{thisPath}/users"
+    userList = []
+    for dirpath, dirs, files in os.walk(path):
+        path = dirpath.split("/")
+        for f in files:
+            if f in ["ReadMe.md", ".DS_Store"]:
+                continue
+            fname = os.path.join(dirpath, f)
+            if fname.endswith(".json"):
+                with open(fname) as myfile:
+                    d = myfile.read()
+                    j = json.loads(d)
+                    name = j["name"]
+                    roles = j["roles"]
+                    print(f"User: {name} Role: {roles}")
+                    userList.append(name)
+    return userList
+
     path = f"{thisPath}/users"
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split("/")
@@ -561,12 +580,14 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             print("")
             for r in roleList:
                 r.printGrants()
+            print("")
+            securityUsers(filePath)
             continue
 
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName =  "ucf" #"b2bderbynw"
+projectName =  "b2bderbynw"
 apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
@@ -577,7 +598,7 @@ command = "not set"
 section = "security" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
- #   main()
+    main()
 #lse:  
 #    local testing and debugging
-    listDirs(basepath, section, apiurl)
+#   listDirs(basepath, section, apiurl)
