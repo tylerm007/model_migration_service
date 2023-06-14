@@ -1,5 +1,5 @@
 # filereader.py
-# Copyright (C) 2005-2021 the Archimedes authors and contributors
+# Copyright (C) 2005-2024 the Archimedes authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of Archimedes and is released under
@@ -15,6 +15,7 @@ import argparse
 from pathlib import Path
 from rule import RuleObj
 from resourceobj import ResourceObj
+from role_security import Role
 from util import to_camel_case, fixup
 
 global version
@@ -214,8 +215,9 @@ def resourceType(resource: object):
     print(resource)
 
 
-def securityRoles(thisPath):
+def securityRoles(thisPath) -> list:
     path = f"{thisPath}/roles"
+    roleList = []
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split("/")
         for f in files:
@@ -227,8 +229,12 @@ def securityRoles(thisPath):
                     d = myfile.read()
                     j = json.loads(d)
                     name = j["name"]
+                    role = Role(roleName=name)
+                    role.loadEntities(j)
                     tablePerm = j["defaultTablePermission"]
                     print(f"Role: {name} TablePermission: {tablePerm}")
+                    roleList.append(role)
+    return roleList
 
     path = f"{thisPath}/users"
     for dirpath, dirs, files in os.walk(path):
@@ -548,13 +554,19 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             continue
 
         if entry == "security":
-            securityRoles(filePath)
+            roleList = securityRoles(filePath)
+            print("def Roles():")
+            for r in roleList:
+                r.printRole()
+            print("")
+            for r in roleList:
+                r.printGrants()
             continue
 
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName =  "b2bderbynw"
+projectName =  "ucf" #"b2bderbynw"
 apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
@@ -562,10 +574,10 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "resources" # all is default or resources, rules, etc.s
+section = "security" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-    main()
+ #   main()
 #lse:  
 #    local testing and debugging
     listDirs(basepath, section, apiurl)
