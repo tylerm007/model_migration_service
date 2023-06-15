@@ -587,7 +587,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName =  "ucf" #"b2bderbynw"
+projectName =  "b2bderbynw"
 apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
@@ -595,10 +595,10 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "security" # all is default or resources, rules, etc.s
+section = "all" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
-#    main()
+    main()
 #lse:  
 #    local testing and debugging
-    listDirs(basepath, section, apiurl)
+#    listDirs(basepath, section, apiurl)

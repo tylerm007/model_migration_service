@@ -116,10 +116,11 @@ def Roles():
 	Authorizedperregion = 'Authorized per region'
 
 #Access Levels: ['READ', 'UPDATE'] TablePermissions: N description: Only My Supplier
-Grant(on_entity=models.Suppliers, to_role=Roles.Supplier)
+Grant(on_entity=models.Suppliers , can_read = True, can_update = True, can_insert = False, can_delete = False, to_role=Roles.Supplier)
 
 #Access Levels: ['READ'] TablePermissions: N description: Promotions
-Grant(on_entity=models.promotions, to_role=Roles.Supplier)
+Grant(on_entity=models.Promotions , can_read = True, can_update = False, can_insert = False, can_delete = False, to_role=Roles.Supplier)
+
 
 
 User: demo Role: ['Full access']
