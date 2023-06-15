@@ -103,13 +103,29 @@ List of users and roles (note views and procedures not listed in this version) -
 =========================
        security 
 =========================
-Role: API User TablePermission: N
 Role: API Documentation TablePermission: A
-Role: Sales Rep TablePermission: N
-Role: API Owner TablePermission: A
-User: demo Roles: ['API Owner']
-User: user1 Roles: ['API Owner']
-User: admin Roles: ['API Owner']
+Role: Read only TablePermission: R
+Role: Supplier TablePermission: N
+Role: Full access TablePermission: A
+Role: Authorized per region TablePermission: A
+def Roles():
+	APIDocumentation = 'API Documentation'
+	Readonly = 'Read only'
+	Supplier = 'Supplier'
+	Fullaccess = 'Full access'
+	Authorizedperregion = 'Authorized per region'
+
+#Access Levels: ['READ', 'UPDATE'] TablePermissions: N description: Only My Supplier
+Grant(on_entity=models.Suppliers, to_role=Roles.Supplier)
+
+#Access Levels: ['READ'] TablePermissions: N description: Promotions
+Grant(on_entity=models.promotions, to_role=Roles.Supplier)
+
+
+User: demo Role: ['Full access']
+User: guest Role: ['Read only']
+User: admin Role: ['Full access']
+User: region Role: ['Authorized per region']
 ```
 
 ## Resources
