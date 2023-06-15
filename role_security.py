@@ -7,7 +7,7 @@
 This is a utility to read the CA Live API Creator file based repository and print a report that can be used to help migrate 
 to API Logic Server (a Python API open-source tool) https://apilogicserver.github.io/Docs/
 """
-
+from util import to_camel_case
 class DotDict(dict):
     """ dot.notation access to dictionary attributes """
     # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329
@@ -54,7 +54,17 @@ class Role():
         roleName = self.roleName.replace(" ","",2)
         for erl in self.entityRoleList:
             print(f"#Access Levels: {erl.accessLevels} TablePermissions: {self.tablePermission} description: {erl.description}")
-            print(f"Grant(on_entity=models.{erl.entityName}, to_role=Roles.{roleName})")
+            grants = ""
+            sep = ","
+            grants = f"{sep} can_read = {self.contains(erl, 'READ')}"
+            grants += f"{sep} can_update = {self.contains(erl,'UPDATE')}"
+            grants += f"{sep} can_insert = {self.contains(erl,'INSERT')}"
+            grants += f"{sep} can_delete = {self.contains(erl,'DELETE')}"
+            if self.contains(erl,'ALL'):
+                grants = ""
+            
+            grants = "," if not grants else f"{grants},"
+            print(f"Grant(on_entity=models.{to_camel_case(erl.entityName)} {grants} to_role=Roles.{roleName})")
             print("")
         
     def loadEntities(self, jsonObj: dict):
@@ -71,3 +81,10 @@ class Role():
             entityRoles.append(entityRoleObj)
             
         self.entityRoleList = entityRoles
+    
+    def contains(self, erl, key) -> bool:
+        try:
+            index = erl.accessLevels.index(key)
+            return True
+        except Exception:
+            return False
