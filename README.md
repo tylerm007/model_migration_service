@@ -98,7 +98,7 @@ ALTER TABLE ADD CONSTRAINT fk_lineitem_purchaseorder FOREIGN KEY LineItem(order_
 ```
 
 ## Security
-List of users and roles (note views and procedures not listed in this version) - this section can be used to configure the ALS role based security.
+List of users and roles (note views and procedures not listed in this version) - this section can be used to configure the ALS role based grant security.
 ```
 =========================
        security 
@@ -108,18 +108,21 @@ Role: Read only TablePermission: R
 Role: Supplier TablePermission: N
 Role: Full access TablePermission: A
 Role: Authorized per region TablePermission: A
+
 def Roles():
-	APIDocumentation = 'API Documentation'
-	Readonly = 'Read only'
+	API_Documentation = 'API Documentation'
+	Read_only = 'Read only'
 	Supplier = 'Supplier'
-	Fullaccess = 'Full access'
-	Authorizedperregion = 'Authorized per region'
+	Full_access = 'Full access'
+	Authorized_per_region = 'Authorized per region'
 
 #Access Levels: ['READ', 'UPDATE'] TablePermissions: N description: Only My Supplier
-Grant(on_entity=models.Suppliers , can_read = True, can_update = True, can_insert = False, can_delete = False, to_role=Roles.Supplier)
+Grant(on_entity=models.Suppliers , can_read = True, can_update = True, can_insert = True, can_delete = False, to_role=Roles.Supplier
+,filter=lambda : models.Supplier.ClientId == user.ID
+)
 
 #Access Levels: ['READ'] TablePermissions: N description: Promotions
-Grant(on_entity=models.Promotions , can_read = True, can_update = False, can_insert = False, can_delete = False, to_role=Roles.Supplier)
+Grant(on_entity=models.Promotions , can_read = True, can_update = True, can_insert = False, can_delete = False, to_role=Roles.Supplier)
 
 
 
