@@ -573,6 +573,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             continue
 
         if entry == "security":
+            print("# copy to security/declare_security.py")
             roleList = securityRoles(filePath)
             print("class Roles():")
             for r in roleList:
@@ -588,7 +589,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
 
 
 projectName =  "b2bderbynw"
-apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
+apiurl = f"/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
