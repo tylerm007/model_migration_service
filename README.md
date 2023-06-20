@@ -116,14 +116,35 @@ def Roles():
 	Full_access = 'Full access'
 	Authorized_per_region = 'Authorized per region'
 
-#Access Levels: ['READ', 'UPDATE'] TablePermissions: N description: Only My Supplier
-Grant(on_entity=models.Suppliers , can_read = True, can_update = True, can_insert = True, can_delete = False, to_role=Roles.Supplier
-,filter=lambda : models.Supplier.ClientId == user.ID
-)
+##Access Levels: ['READ', 'UPDATE'] TablePermissions: N description: Only My Supplier
+Grant(on_entity=models.Suppliers , can_read = True, can_update = True, can_insert = False, can_delete = False, to_role=Roles.Supplier)
+#filter="SupplierID" = @{ID}
 
 #Access Levels: ['READ'] TablePermissions: N description: Promotions
-Grant(on_entity=models.Promotions , can_read = True, can_update = True, can_insert = False, can_delete = False, to_role=Roles.Supplier)
+Grant(on_entity=models.Promotions , can_read = True, can_update = False, can_insert = False, can_delete = False, to_role=Roles.Supplier)
 
+
+#Role: APIDocumentation TablePermission: A
+insert into UserRole(user, role_name, can_read, can_insert, can_update, can_delete)
+values('swaggger','APIDocumentation', True, True , True , True)
+
+#Role: Readonly TablePermission: R
+insert into UserRole(user, role_name, can_read, can_insert, can_update, can_delete)
+values('guest', 'Readonly', True, False , False , False)
+
+#Role: Supplier TablePermission: N
+insert into UserRole(role_name, can_read, can_insert, can_update, can_delete)
+values('Supplier', False, False , False , False)
+
+#Role: Fullaccess TablePermission: A
+insert into UserRole(user, role_name, can_read, can_insert, can_update, can_delete)
+values('demo','Fullaccess', True, True , True , True)
+insert into UserRole(user, role_name, can_read, can_insert, can_update, can_delete)
+values('admin','Fullaccess', True, True , True , True)
+
+#Role: Authorizedperregion TablePermission: A
+insert into UserRole(user, role_name, can_read, can_insert, can_update, can_delete)
+values('region','Authorizedperregion', True, True , True , True)
 
 
 User: demo Role: ['Full access']
