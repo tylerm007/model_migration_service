@@ -50,6 +50,21 @@ class Role():
         roleName = self.roleName.replace(" ","",2)
         print(f"\t{roleName} = '{self.roleName}'")
         
+    def printTablePermission(self):
+        roleName = self.roleName.replace(" ","",2)
+        print(f"#Role: {roleName} TablePermission: {self.tablePermission}")
+        can_read, can_insert, can_update, can_delete = self.getTablePerm()
+        print("insert into RoleDef(role_name, can_read, can_insert, can_update, can_delete)")
+        print(f"values('{roleName}', {can_read}, {can_insert} , {can_update} , {can_delete})")
+        print("")
+        
+    def getTablePerm(self):
+        p = self.tablePermission
+        if p == "A":
+            return True,True,True,True
+        elif p == 'R':
+            return True,False,False,False
+        return False,False,False,False
     def printGrants(self):
         roleName = self.roleName.replace(" ","",2)
         for erl in self.entityRoleList:
@@ -62,9 +77,11 @@ class Role():
             grants += f"{sep} can_delete = {self.contains(erl,'DELETE')}"
             if self.contains(erl,'ALL'):
                 grants = ""
-            
+            rowFilter = erl.rowFilter 
             grants = "," if not grants else f"{grants},"
             print(f"Grant(on_entity=models.{to_camel_case(erl.entityName)} {grants} to_role=Roles.{roleName})")
+            if rowFilter is not None:
+                print(f"#filter={rowFilter}")
             print("")
         
     def loadEntities(self, jsonObj: dict):

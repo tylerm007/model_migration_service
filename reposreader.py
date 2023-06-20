@@ -226,13 +226,11 @@ def securityRoles(thisPath) -> list:
             fname = os.path.join(dirpath, f)
             if fname.endswith(".json"):
                 with open(fname) as myfile:
-                    d = myfile.read()
-                    j = json.loads(d)
+                    data = myfile.read()
+                    j = json.loads(data)
                     name = j["name"]
                     role = Role(roleName=name)
                     role.loadEntities(j)
-                    tablePerm = j["defaultTablePermission"]
-                    print(f"Role: {name} TablePermission: {tablePerm}")
                     roleList.append(role)
     return roleList
 
@@ -581,6 +579,9 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             print("")
             for r in roleList:
                 r.printGrants()
+            print("")
+            for r in roleList:
+                r.printTablePermission()
             print("")
             securityUsers(filePath)
             continue
