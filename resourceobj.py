@@ -94,14 +94,15 @@ class ResourceObj:
             space = "\t"
             name = self.name.lower()
             entity = self.entity
-            print(f"@app.route('{apiURL}/{name}/<id>', methods=['GET', 'POST','PUT','OPTIONS'])")
-            print(f"def {name}(id):")
+            print(f"@app.route('{apiURL}/{name}/<key>', methods=['GET', 'POST','PUT','OPTIONS'])")
+            print("@admin_required()")
+            print(f"def {name}(key):")
             print(f'{space}root = CustomEndpoint(model_class=models.{entity},alias="{self.name}"')
             self.printResAttrs(version, 1)
             self.printGetFunc(name, 1)
             self.printChildren(name, version, 1)
             print(f"{space})")
-            print(f"{space}return root.execute(request, id)")
+            print(f"{space}return root.execute(request, key)")
             print("")
         
 
