@@ -11,6 +11,7 @@ from sqlalchemy import event, MetaData, and_, or_
 from sqlalchemy.inspection import inspect
 from sqlalchemy import select
 from sqlalchemy.sql import text
+from flask import jsonify
 from sqlalchemy_utils.query_chain import QueryChain
 import flask_sqlalchemy
 import safrs
@@ -18,6 +19,7 @@ from typing import List, Dict, Tuple
 import util
 import json 
 import requests
+from config import Config
 
 resource_logger = logging.getLogger("api.customize_api")
 
@@ -123,7 +125,7 @@ class CustomEndpoint():
         self._pkeyList: list = [] # primary key list TODO collect when needed - do not store
         self._fkeyList: list = [] # foreign_key list (used by isParent) TODO collect when needed - do not store
         self._dictRows: list = [] # temporary holding for query results (Phase 1)
-        self._parentRow = {} # keep track of linkage
+        self._parentRow = Dict[str, any] # keep track of linkage
 
     def __str__(self):
             print(
@@ -141,8 +143,9 @@ class CustomEndpoint():
         Returns:
             dict: JSON result
         """
-        serverURL = "http://localhost:5656/api" #TODO get from engine
-        query = f"{serverURL}/{self._model_class_name}/?include={include}"
+        #TODO if security header needs Bearer token
+        serverURL = f"{request.host_url}api"
+        query = f"{serverURL}/{self._model_class_name}?include={include}"
         args = request.args
         pkey = self.primaryKey
         key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
@@ -151,7 +154,12 @@ class CustomEndpoint():
         elif altKey is not None:
             query += f"&filter%5Bid%5D={altKey}"
         resource_logger.debug(f"CustomEndpoint get using query: {query}")
-        result = requests.get(query)
+        if Config.SECURITY_ENABLED:
+            jwt = request.headers.get("Authorization") or ""
+            header = {"Authorization": jwt,"Content-Type": "application/json"}
+            result = requests.get(query, headers=header)
+        else:
+            result = requests.get(query)
         if result.status_code == 200:
             jsonResult = json.loads(result.content)
             self._populateResponse(jsonResult) # Pass the JSON result to CustomEndpoint 
@@ -159,7 +167,7 @@ class CustomEndpoint():
             return result
         return {"error": result.status_code}
         
-    def execute(self: CustomEndpoint, request: safrs.request.SAFRSRequest, altKey: any = None) -> dict:
+    def execute(self: CustomEndpoint, request: safrs.request.SAFRSRequest, altKey: str = None) -> dict:
         """
         execute a model_class resource 
         Args:
@@ -269,35 +277,43 @@ class CustomEndpoint():
         model_class = self._model_class
         model_class_name = self._model_class_name
         queryFilter = self._createFilterFromKeys()
+        session_qry= session.query(model_class)
+        #t = session.execute(select(model_class).where(text("Id = 'ALFKI'"))).all() #.join(models.Customer.OrderList)).order()
         if queryFilter is None or queryFilter == 'None':
             #query = select(self._model_class)
+            resource_logger.debug(
+                    f"CreateRows on {model_class_name} using filter_by: {self.filter_by} order_by: {self.order_by}")
             if self.filter_by is not None:
-                resource_logger.debug(
-                    f"CreateRows on {model_class_name} using Resource filter: {self.filter_by}")
-                rows = session.query(model_class).filter(text(self.filter_by)).limit(limit).offset(offset).all()
-            elif self.order_by is not None:
+                qry = session_qry.filter(self.filter_by)
+                if self.order_by is not None:
+                    qry = qry.order_by(self.order_by)
+                if filter_by is not None:
                     resource_logger.debug(
-                        f"CreateRows on {model_class_name} using Resource order_by: {self.order_by}")
-                    rows = session.query(model_class).order_by(self.order_by).limit(limit).offset(offset).all()
-            elif filter_by is not None:
-                    resource_logger.debug(
-                    f"CreateRows on {model_class_name} using Resource filter_by: {filter_by}")
-                    rows = session.query(model_class).filter(text(filter_by)).limit(limit).offset(offset).all()
+                    f"Adding filter_by: {filter_by}")
+                    qry = qry.filter(text(filter_by))
+                rows = qry.limit(limit).offset(offset).all()
             else:
-                rows = session.query(model_class).limit(limit).offset(offset).all()
+                if filter_by is not None:
+                    resource_logger.debug(
+                    f"Adding filter_by: {filter_by}")
+                    qry = session_qry.filter(text(filter_by))
+                    rows = qry.limit(limit).offset(offset).all()
+                else:
+                    rows = session_qry.limit(limit).offset(offset).all()
         else:
-            #stmt = select(model_class).where(text(filter)).order_by(self.order_by)
-            #rows = session.execute(stmt)
             resource_logger.debug(
                 f"CreateRows on {model_class_name} using QueryFilter: {queryFilter} order_by: {self.order_by}")
             if self.order_by is not None:
-                rows = session.query(model_class).filter(text(queryFilter)).order_by(self.order_by)
+                qry = session_qry.filter(text(queryFilter)).order_by(self.order_by)
             elif  self.filter_by is None:
-                    rows = session.query(model_class).filter(text(queryFilter))
+                qry = session_qry.filter(text(queryFilter))
             else:
-                rows = session.query(model_class).filter(text(filter_by)).limit(limit).offset(offset).all() #.filter(text(self.filter_by))
-
-        # modifiedRows = CustomEndpoint._modifyRow(self, dictRows)
+                if filter_by:
+                    resource_logger.debug(
+                    f"Adding on {model_class_name} using filter_by: {filter_by}")
+                    qry = session_qry.filter(text(filter_by))#.filter(text(self.filter_by))
+            rows = qry.limit(limit).offset(offset).all()
+            
         dictRows = self.rows_to_dict(rows)
         self._dictRows = dictRows
         
@@ -308,14 +324,10 @@ class CustomEndpoint():
             """
             join_on=[(models.SourceDatum.clientId, models.SourceDatum.clientId),(models.SourceDatum.dataYear, models.SourceDatum.priorYear)]
             we may have multiple joins - need to collect each one 
-            
-                    
             #clientId in (clientId keys) and  dataYear in (priorYear keys)
-            
             #result += F"{and} " + self._extractedFromKeys(keyName, keys)
             
-        """
-            
+        """     
         if isinstance(self.join_on, list):
             andOp = ""
             for join in self.join_on:
@@ -324,11 +336,9 @@ class CustomEndpoint():
         else:
             aFilter = self.buildJoin("", self.join_on)        
        
-        resource_logger.debug(
-                f"_createFilterFromKeys Class: {self._model_class_name} Filter: {aFilter}")
         return aFilter
 
-    def buildJoin(self, andOp, join) -> str:
+    def buildJoin(self, andOp: str, join: Column) -> str:
         joinStr = None
         if join is not None:
             if join.__class__.__name__ == 'InstrumentedAttribute':
@@ -347,7 +357,7 @@ class CustomEndpoint():
                 fkeyName = join[1].key #child
                 self.primaryKey = fkeyName if self.isParent else self.primaryKey
                 self.foreignKey = join[1] if self.isParent else join[0]
-                keyName = join[0] if self.isParent else pkeyName
+                keyName = join[1].key if self.isParent else pkeyName
             
             keys = self._collectParentKeys(keyName)
             if keys is not None:
@@ -426,7 +436,7 @@ class CustomEndpoint():
             row (dict): this is the parent row
             modifiedRow (dict): this is the same row that has been modified
         """
-        if not self.isParent and not self.isCombined:
+        if not self.isCombined:
             modifiedRow[self.alias] = []
         self._parentRow  = DotDict(row)
         pkeyValue = row[self.foreignKey.key] if self.isParent and self.foreignKey.key in row else row[self.primaryKey]
@@ -562,7 +572,7 @@ class CustomEndpoint():
         for each_row in result:
             row_as_dict = None
             print(f'type(each_row): {type(each_row)}')
-            if isinstance (each_row, sqlalchemy.engine.row.LegacyRow):  # sqlalchemy.engine.row
+            if isinstance (each_row, sqlalchemy.engine.row.Row):  # sqlalchemy.engine.row
                 row_as_dict = each_row._asdict()
             else:
                 row_as_dict = each_row.to_dict()

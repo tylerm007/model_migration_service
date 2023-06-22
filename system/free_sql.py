@@ -2,7 +2,6 @@
 import safrs
 import json
 from pymysql import cursors, connect
-import pymysql
 import sqlite3
 #import postresql TODO
 
@@ -23,7 +22,7 @@ class FreeSQL():
         
         def execute(self, request):  
             data = []
-            
+            #TODO make sure we validate security JWT 
             # fixup sql 
             # open connection, cursor, execute , findAll() 
             sql = self.fixup(request)
@@ -34,11 +33,12 @@ class FreeSQL():
                 if conn_str.drivername == 'sqlite':
                     cursor = conn.cursor()
                     cur = cursor.execute(sql)
-                    results = [{
+                    resultList = [{
                         (cur.description[i][0], value)
                             for i, value in enumerate(row)
                         } for row in cur.fetchall()]
                     cur.connection.close()
+                    results = dict(resultList[0])
                 else:
                     cur = conn.cursor(pymysql.cursors.DictCursor)
                     cursor = cur.execute(sql)
@@ -79,7 +79,7 @@ class FreeSQL():
                 LAC FreeSQL passes these args
                 -- perhaps generate a function
                 these were place holders that are passed by client or defaulted
-                @{SCHEMA} 
+                @{SCHEMA} __bind_key__
                 @{WHERE} 
                 @{JOIN}
                 @{ARGUMENT.} may include prefix (e.g. =main:entityName.attrName)
