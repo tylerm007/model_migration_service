@@ -1,7 +1,7 @@
 
 import safrs
 import json
-from pymysql import cursors, connect
+import  pymysql 
 import sqlite3
 #import postresql TODO
 
