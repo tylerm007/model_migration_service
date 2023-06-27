@@ -271,8 +271,11 @@ class CustomEndpoint():
         :filter_by root only
         :order_by root only
         """
-        # If _populateResponse is used - the rows are already filled
-        if len(self._dictRows) > 0:
+        # If _populateResponse is used - the _dictRows are already filled
+        # or the parent resource has now rows - so no need to fetch
+        if len(self._dictRows) > 0 or \
+            (self._parentResource is not None \
+            and len(self._parentResource._dictRows) == 0):
             return
         model_class = self._model_class
         model_class_name = self._model_class_name
@@ -313,9 +316,9 @@ class CustomEndpoint():
                     f"Adding on {model_class_name} using filter_by: {filter_by}")
                     qry = session_qry.filter(text(filter_by))#.filter(text(self.filter_by))
             rows = qry.limit(limit).offset(offset).all()
-            
-        dictRows = self.rows_to_dict(rows)
-        self._dictRows = dictRows
+        if rows:    
+            dictRows = self.rows_to_dict(rows)
+            self._dictRows = dictRows
         
 
     def _createFilterFromKeys(self):
@@ -388,9 +391,11 @@ class CustomEndpoint():
         else:
             print(
                 level * ' ', f"CustomEndpoint alias: {self.alias} model: {self._model_class.__name__} primaryKey: {self.primaryKey} parent: {parenName}")
-        if len(self.fields) > 0:
+        if isinstance(self.fields, tuple) and len(self.fields) > 0:
             fields = self.getPrintableFields()
             print(level * '  ', f"Fields: {fields}", sep=", ")
+        elif isinstance(self.fields, sqlalchemy.orm.attributes.InstrumentedAttribute):
+            print(level * '  ', f"Fields: {self.fields.key}", sep=", ")
         if isinstance(self.children, CustomEndpoint):
             self.children._parentResource = self
             self.children._printIncludes(level + 1)
@@ -405,11 +410,8 @@ class CustomEndpoint():
             for fld in self.fields:
                 if isinstance(fld, str):
                     result += f" alias: {fld} "
-                else:
-                    if isinstance(fld, tuple):
-                        result +=  f" {fld[0].key} "
-                    else:
-                        result +=  f" {fld.key} "
+                elif isinstance(self.fields, sqlalchemy.orm.attributes.InstrumentedAttribute):
+                    result += f" {fld[0].key} " if isinstance(fld, tuple) else f" {fld} "
         return result
     
     def _modifyRows(self, result):
@@ -457,10 +459,20 @@ class CustomEndpoint():
     def _modifyRow(self, tableRowDict: dict) -> dict:
         newRow = DotDict({})
         tableRow = DotDict(tableRowDict)
-        if self.fields is not None and len(self.fields) > 0:
+        if isinstance(self.fields, sqlalchemy.orm.attributes.InstrumentedAttribute):
+            f = self.fields
+            fieldName = f[0].key if isinstance(f, tuple) else f.key
+            alias = f[1] if isinstance(f, tuple) else fieldName
+            if fieldName in tableRow:
+                newRow[alias] = tableRow[fieldName]
+        elif len(self.fields) > 0:
             for f in self.fields:
-                fieldName = f[0].key if isinstance(f, tuple) else f.key
-                alias = f[1] if isinstance(f, tuple) else fieldName
+                if isinstance(f,str):
+                    fieldName = f
+                    alias = fieldName
+                else:
+                    fieldName = f[0].key if isinstance(f, tuple) else f.key
+                    alias = f[1] if isinstance(f, tuple) else fieldName
                 if fieldName in tableRow:
                     newRow[alias] = tableRow[fieldName]
         else:
@@ -472,8 +484,17 @@ class CustomEndpoint():
                 self.calling(newRow, tableRow, self._parentRow)
             except Exception as ex:
                 resource_logger.error(f"unable to execute fn {self.calling} error: {ex}")
+        if not self.isCombined:
+            self.insertCheckSum(newRow, tableRow)
+            
         return newRow
-
+    
+    def insertCheckSum(self, newRow: dict, tableRow: dict):
+        if Config.OPT_LOCKING == "required" \
+            and ("S_CheckSum" not in newRow and "S_CheckSum" in tableRow):
+            newRow["S_CheckSum"] = tableRow.S_CheckSum
+            
+    
     def addRowToResult(self, result: any, rows: any):
         """_summary_
 
