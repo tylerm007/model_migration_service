@@ -54,8 +54,7 @@ class Role():
         roleName = self.roleName.replace(" ","",2)
         print(f"#Role: {roleName} TablePermission: {self.tablePermission}")
         can_read, can_insert, can_update, can_delete = self.getTablePerm()
-        print("insert into RoleDef(role_name, can_read, can_insert, can_update, can_delete)")
-        print(f"values('{roleName}', {can_read}, {can_insert} , {can_update} , {can_delete})")
+        print(f"Grant(on_entity='{self.tablePermission}', can_read={can_read}, can_insert={can_insert} , can_update={can_update} , can_delete={can_delete}, to_role='{roleName}')")
         print("")
         
     def getTablePerm(self):
@@ -65,6 +64,7 @@ class Role():
         elif p == 'R':
             return True,False,False,False
         return False,False,False,False
+    
     def printGrants(self):
         roleName = self.roleName.replace(" ","",2)
         for erl in self.entityRoleList:
@@ -81,7 +81,7 @@ class Role():
             grants = "," if not grants else f"{grants},"
             print(f"Grant(on_entity=models.{to_camel_case(erl.entityName)} {grants} to_role=Roles.{roleName})")
             if rowFilter is not None:
-                print(f"#filter={rowFilter}")
+                print(f"# filter= lambda: {rowFilter})")
             print("")
         
     def loadEntities(self, jsonObj: dict):

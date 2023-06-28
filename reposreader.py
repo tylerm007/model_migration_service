@@ -195,14 +195,12 @@ def dataSource(path: Path):
                         )
                         print("")
         print("=============================================================================================")
-        print("    CURL tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
+        print("    als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
         print("=============================================================================================")
         for tbl in tableList:
             name = singular(tbl)
-            print(f"ECHO calling endpoint: {name}?page[limit]=1")
-            print(f"curl \"http://localhost:5656/api/{name}?page%5Blimit%5D=1\"")
-            print("         -H 'accept: application/vnd.api+json' \\")
-            print("         -H 'Content-Type: application/json' ")
+            print(f"# als calling endpoint: {name}?page[limit]=1")
+            print(f'als get \"api/{name}?page%5Blimit%5D=1\" -m json')
             print("")
             print("")
 
@@ -252,22 +250,6 @@ def securityUsers(thisPath) -> list:
                     print(f"User: {name} Role: {roles}")
                     userList.append(name)
     return userList
-
-    path = f"{thisPath}/users"
-    for dirpath, dirs, files in os.walk(path):
-        path = dirpath.split("/")
-        for f in files:
-            if f in ["ReadMe.md", ".DS_Store"]:
-                continue
-
-            fname = os.path.join(dirpath, f)
-            if fname.endswith(".json"):
-                with open(fname) as myfile:
-                    d = myfile.read()
-                    j = json.loads(d)
-                    name = j["name"]
-                    roles = j["roles"]
-                    print(f"User: {name} Roles: {roles}")
 
 
 def printCols(jsonObj: object):
@@ -320,8 +302,7 @@ def buildResourceList(resPath: str):
                     data = myfile.read()
                     jsonObj = json.loads(data)
                     if "isActive" in jsonObj and jsonObj["isActive"] == False:
-                       continue
-                   
+                        continue
                     print("|", len(path) * "---", "F", f, "Entity:", printCols(jsonObj))
                     drName = ','.join(path[:-1])
                     resObj = ResourceObj(parentName=parentName, parentDir=drName, jsonObj=jsonObj)
@@ -489,17 +470,15 @@ def printChild(self):
             return f"Name: {self.name} Entity: {self.entity}  ResourceType: {self.ResourceType} ChildName: {self.childObj[0].name}"  # {print(childObj[0]) for i in childObj: print(childObj[i])}
 
 
-def printCurlTests(resObj: ResourceObj, apiURL: str):
+def printTests(resObj: ResourceObj, apiURL: str):
     print("")
-    #print("CURL TESTS")
+    #print("ALS Command Line TESTS")
     if resObj.isActive:
         name = resObj.name.lower()
         entity = resObj.entity
-        filter_by = "/1?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
-        print(f"ECHO calling Entity {entity} using: {apiURL}/{name}{filter_by}")
-        print(f"curl \"http://localhost:5656{apiURL}/{name}{filter_by}\"")
-        print("         -H 'accept: application/vnd.api+json' \\")
-        print("         -H 'Content-Type: application/json'")
+        filter_by = "?page%5Blimit%5D=1" # page[offset]=0&filter[key]=value"
+        print(f"# als get calling Entity {entity} using: {apiURL}/{name}{filter_by}")
+        print(f'als get \"{apiURL}/{name}{filter_by}\" -k 1 -m json')
         print("")
 
 
@@ -532,11 +511,13 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
                 resObj.PrintResource(version, apiURL)
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
-            print("===============================================")
-            print("    CURL tests for each UserResource endpoint")
-            print("================================================")
+            print("===========================================================")
+            print("    ALS Command Line tests for each Resource endpoint")
+            print("===========================================================")
+            print("als login http://localhost:5656 -u u1 -p p -a nw")
+            print("")
             for resObj in resList:
-                printCurlTests(resObj, apiURL)
+                printTests(resObj, apiURL)
             
             print("#FreeSQL section to ALS api/customize_api.py")
             for resObj in resList:
