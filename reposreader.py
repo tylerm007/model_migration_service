@@ -195,12 +195,29 @@ def dataSource(path: Path):
                         )
                         print("")
         print("=============================================================================================")
+        print("    ALS may change the name of tables (entity) - so create a endpoint with original name" )
+        print("=============================================================================================")
+        for name in tableList:
+            entity_name = to_camel_case(name)
+            entity_name = entity_name[:1].upper() + entity_name[1:]
+            print(f"@app.route('{apiurl}/{name}', methods=['GET', 'POST','PUT','OPTIONS'])")
+            print("@admin_required()")
+            print(f"def {name}(key):")
+            print(f'\troot = CustomEndpoint(model_class=models.{entity_name})')
+            print(f"\tresult = root.execute(request)")
+            print(f"\treturn transform('LAC', result)")
+            print("")
+        print(f"def transform(style:str, result: dict): -> dict")
+        print(f"\t# use this to change the output (pipeline) of the result")
+        print(f"\treturn result")
+        print("")
+        print("=============================================================================================")
         print("    als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
         print("=============================================================================================")
         for tbl in tableList:
             name = singular(tbl)
             print(f"# als calling endpoint: {name}?page[limit]=1")
-            print(f'als get \"api/{name}?page%5Blimit%5D=1\" -m json')
+            print(f'als get \"{apiurl}/{name}?page%5Blimit%5D=1\" -m json')
             print("")
             print("")
 
@@ -511,6 +528,10 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
                 resObj.PrintResource(version, apiURL)
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
+            print(f"def transform(style:str, result: dict): -> dict")
+            print(f"\t# use this to change the output (pipeline) of the result")
+            print(f"\treturn result")
+            print("")
             print("===========================================================")
             print("    ALS Command Line tests for each Resource endpoint")
             print("===========================================================")
@@ -570,7 +591,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName =  "b2bderbynw"
+projectName = "b2bderbynw"
 apiurl = f"/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
@@ -582,6 +603,6 @@ section = "all" # all is default or resources, rules, etc.s
 
 if __name__ == "__main__":
     main()
-#lse:  
+#else:  
 #    local testing and debugging
 #    listDirs(basepath, section, apiurl)
