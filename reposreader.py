@@ -528,7 +528,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
                 resObj.PrintResource(version, apiURL)
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
-            print(f"def transform(style:str, result: dict): -> dict")
+            print(f"def transform(style:str, result: dict) -> dict:")
             print(f"\t# use this to change the output (pipeline) of the result")
             print(f"\treturn result")
             print("")
