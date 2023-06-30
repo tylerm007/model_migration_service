@@ -207,7 +207,7 @@ def dataSource(path: Path):
             print(f"\tresult = root.execute(request)")
             print(f"\treturn transform('LAC', result)")
             print("")
-        print(f"def transform(style:str, result: dict) -> dict":)
+        print(f"def transform(style:str, result: dict) -> dict:")
         print(f"\t# use this to change the output (pipeline) of the result")
         print(f"\treturn result")
         print("")
