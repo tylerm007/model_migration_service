@@ -103,7 +103,7 @@ class ResourceObj:
             self.printChildren(name, version, 1)
             print(f"{space})")
             print(f"{space}result = root.execute(request)")
-            print(f"{space}return transform('LAC', result)")
+            print(f"{space}return transform('LAC', '{self.name}', result)")
             print("")
         
 

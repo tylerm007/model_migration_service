@@ -205,7 +205,7 @@ def dataSource(path: Path):
             print(f"def {name}():")
             print(f'\troot = CustomEndpoint(model_class=models.{entity_name})')
             print(f"\tresult = root.execute(request)")
-            print(f"\treturn transform('LAC', '{name}', result)")
+            print(f"\treturn transform('LAC', '{name.lower()}', result)")
             print("")
         print(f"def transform(style:str, key:str, result: dict) -> dict:")
         print(f"\t# use this to change the output (pipeline) of the result")
@@ -591,8 +591,8 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName = "b2bderbynw"
-apiurl = f"/rest/default/{projectName}/v1" # this is used for building the resource URL
+projectName = "ucf" #"b2bderbynw"
+apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
