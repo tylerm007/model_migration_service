@@ -486,6 +486,35 @@ def printChild(self):
         else:
             return f"Name: {self.name} Entity: {self.entity}  ResourceType: {self.ResourceType} ChildName: {self.childObj[0].name}"  # {print(childObj[0]) for i in childObj: print(childObj[i])}
 
+def pipeline(thisPath):
+    path = f"{thisPath}"
+    pipelines = []
+    for dirpath, dirs, files in os.walk(path):
+        path = dirpath.split("/")
+        for f in files:
+            if f in ["ReadMe.md", ".DS_Store"]:
+                continue
+            fname = os.path.join(dirpath, f)
+            if fname.endswith(".json"):
+                with open(fname) as myfile:
+                    d = myfile.read()
+                    j = json.loads(d)
+                    isActive = j["isActive"]
+                    if isActive:
+                        name = j["name"]
+                        _type = j["eventType"]
+                        appliesTo = j["appliesTo"]
+                        isRestricted = j["isRestricted"]
+                        restrictedTo = j["restrictedTo"] if isRestricted else ""
+                        print(f"#Pipeline: {name} type: {_type} appliesTo: {appliesTo} restrictedTo: {restrictedTo}")
+                        fn = f.split(".")[0] + ".js"
+                        javaScriptFile = findInFiles(dirpath, files, fn)
+                        print("def fn_pipeline_{name}(result: dict) -> dict:")
+                        print("'''")
+                        print(fixup(javaScriptFile))
+                        print("'''")
+                        print("")
+                        pipelines.append(name)
 
 def printTests(resObj: ResourceObj, apiURL: str):
     print("")
@@ -588,10 +617,14 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             securityUsers(filePath)
             continue
 
+        if entry == "pipeline_events":
+            pipeline(filePath)
+            continue
+        
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName = "ucf" #"b2bderbynw"
+projectName = "b2bderbynw"
 apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
