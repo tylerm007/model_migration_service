@@ -96,8 +96,8 @@ class FreeSQL():
                     whereStr = args.get("@where") or "1=1" 
                     joinStr =  args.get("@join") or ""
                     #orderStr = "1" #args.get("@order","1")
-                    limit = args.get("page[limit]") or 10
-                    offset = args.get("page[offset]") or 0
+                    limit = args.get("page[limit]") or "10"
+                    offset = args.get("page[offset]") or "0"
                     order_by = args.get("sort") or "1"
                 
                     sql = sql.replace(":SCHEMA",schema, 10)

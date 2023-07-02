@@ -147,19 +147,22 @@ class CustomEndpoint():
         serverURL = f"{request.host_url}api"
         query = f"{serverURL}/{self._model_class_name}?include={include}"
         args = request.args
-        pkey = self.primaryKey
-        key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
-        if key is not None:
-            query += f"&filter%5Bid%5D={key}"
-        elif altKey is not None:
-            query += f"&filter%5Bid%5D={altKey}"
+        key, value = self.parseArgs(args)
+        #key = args.get(key) if args.get(key) is not None else args.get(f"filter[{key}]")
+        if altKey is not None:
+            query += f"&filter%5B{self.primaryKey}%5D={altKey}"
+        elif key is not None:
+            query += f"&filter%5B{key}%5D={value}"
+        limit = args.get("page[limit]") or 10
+        offset = args.get("page[offset]") or 0
+        params = {'page[limit]': limit, 'page[offset]': offset}
         resource_logger.debug(f"CustomEndpoint get using query: {query}")
         if Config.SECURITY_ENABLED:
             jwt = request.headers.get("Authorization") or ""
             header = {"Authorization": jwt,"Content-Type": "application/json"}
-            result = requests.get(query, headers=header)
+            result = requests.get(query, headers=header, params=params)
         else:
-            result = requests.get(query)
+            result = requests.get(query, params=params)
         if result.status_code == 200:
             jsonResult = json.loads(result.content)
             self._populateResponse(jsonResult) # Pass the JSON result to CustomEndpoint 
@@ -203,15 +206,15 @@ class CustomEndpoint():
         #self._model_class.__mapper__.relationships.get("Manages").primaryjoin.left or right left.key or right.key
         resource_logger.debug(f"execute CustomEndpoint on: {self._model_class_name} using alias: {self.alias}")
         filter_by = None
-        pkey = self.primaryKey
-        key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
-        if key is not None:
-            filter_by = f'{pkey} = {self.quoteStr(key)}'
-            self._pkeyList.append(self.quoteStr(key))
+        #key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
+        pkey , value = self.parseArgs(args)
+        if value is not None:
+            filter_by = f'{pkey} = {self.quoteStr(value)}'
+            self._pkeyList.append(self.quoteStr(value))
         elif altKey is not None:
             filter_by = f'{pkey} = {self.quoteStr(altKey)}'
             self._pkeyList.append(self.quoteStr(altKey))
-        limit = args.get("page[limit]") or 10
+        limit = args.get("page[limit]") or 20
         offset = args.get("page[offset]") or 0
         order_by = args.get("sort")
         result = {}
@@ -633,3 +636,26 @@ class CustomEndpoint():
                 f"_executeChildren a child: {self._model_class_name} isParent: {self.isParent}")
         self._createRows()
         self._executeChildren()
+        
+    def parseArgs(self,args):
+        pkey = self.primaryKey
+        value = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
+        if value is None:
+            _sys_filter:str = args.get("sysfilter") 
+            _filter:str = args.get("filter")
+            """
+            sysfilter=equal(fieldName, value)
+            filter=fieldName=value
+            
+            """
+            if _sys_filter:
+                 if _sys_filter.startswith("equal("):
+                    f = _sys_filter[6:-1].split(",")
+                    pkey = f[0]
+                    value = f[1]
+            elif _filter:
+                f = _filter.split("=")
+                pkey = f[0]
+                value = f[1]
+        
+        return pkey, value
