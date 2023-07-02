@@ -46,7 +46,6 @@ def main(calling_args=None):
         reposLocation = args.repos
         sections = args.section or "all"
         apiURL = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL 
-       
         basepath = f"{reposLocation}/{apiroot}/{projectName}"
     try:
         readTableAlias()
@@ -54,6 +53,27 @@ def main(calling_args=None):
     except Exception as ex:
         print(f"Error running  {ex}")
 
+def printTransform():
+    print("def transform(style:str, key:str, result: dict) -> dict:")
+    print(f"\t# use this to change the output (pipeline) of the result")
+     # use this to change the output (pipeline) of the result
+    code = "\
+    try: \n\
+        j = json.loads(result)\n\
+    except Exception as ex:\n\
+        app_logger.error(f'Transform Error on style {style} using key: {key} error: {ex}')\n\
+        return result\n\
+    if style == 'LAC':\n\
+        if key == '':\n\
+            r = []\n\
+            r.append(j)\n\
+            return r\n\
+        else:\n\
+            return j[key] if key in j else j\n\
+    return j"
+    print(code)
+    print("")
+    
 def readTableAlias():
     """
     Read a list of generated tables from ALS to use in the translation
@@ -207,10 +227,7 @@ def dataSource(path: Path):
             print(f"\tresult = root.execute(request)")
             print(f"\treturn transform('LAC', '{name.lower()}', result)")
             print("")
-        print(f"def transform(style:str, key:str, result: dict) -> dict:")
-        print(f"\t# use this to change the output (pipeline) of the result")
-        print(f"\treturn json.loads(result)[key]")
-        print("")
+        printTransform()
         print("=============================================================================================")
         print("    als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
         print("=============================================================================================")
@@ -557,7 +574,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
                 resObj.PrintResource(version, apiURL)
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
-            print(f"def transform(style:str, result: dict) -> dict:")
+            print("def transform(style:str, result: dict) -> dict:")
             print(f"\t# use this to change the output (pipeline) of the result")
             print(f"\treturn result")
             print("")
@@ -632,7 +649,7 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "all" # all is default or resources, rules, etc.s
+section = "resource" # all is default or resources, rules, security, pipeline_events, data_sources , etc.
 
 if __name__ == "__main__":
     main()
