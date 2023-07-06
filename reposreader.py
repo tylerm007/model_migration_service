@@ -225,9 +225,9 @@ def dataSource(path: Path):
             print(f"def {name}():")
             print(f'\troot = CustomEndpoint(model_class=models.{entity_name})')
             print(f"\tresult = root.execute(request)")
-            print(f"\treturn transform('LAC', '{name.lower()}', result)")
+            print(f"\treturn root.transform('LAC', '{name.lower()}', result)")
             print("")
-        printTransform()
+        #printTransform()
         print("=============================================================================================")
         print("    als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
         print("=============================================================================================")
@@ -649,7 +649,7 @@ reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "resource" # all is default or resources, rules, security, pipeline_events, data_sources , etc.
+section = "all" # all is default or resources, rules, security, pipeline_events, data_sources , etc.
 
 if __name__ == "__main__":
     main()

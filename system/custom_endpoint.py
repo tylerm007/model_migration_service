@@ -1,9 +1,10 @@
 from __future__ import annotations  # enables Resource self reference
 import sqlalchemy
+from sqlalchemy import update, insert
 import logging
 import contextlib
 from sqlalchemy import Column, Table, ForeignKey
-from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy.orm.decl_api import DeclarativeMeta #sqlalchemy.orm.decl_api.DeclarativeMeta
 from sqlalchemy.orm import relationships, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import get_referencing_foreign_keys
@@ -15,6 +16,7 @@ from flask import jsonify
 from sqlalchemy_utils.query_chain import QueryChain
 import flask_sqlalchemy
 import safrs
+from safrs.errors import JsonapiError, ValidationError
 from typing import List, Dict, Tuple
 import util
 import json 
@@ -182,21 +184,7 @@ class CustomEndpoint():
             'page[limit]=10 or limit=10
             'sort=CompanyName'
             'filter[id]=ALFKI or Id=ALFKI
-        '''
-
-        Returns:
-            dict: data dict from sql
-        """
-        args = {}
-        if request is not None:
-            method = request.method
-            if method != 'GET':
-               # raise ValueError("Only GET is supported at this time")
-                return {"error":"only GET is supported at this time"}
-            elif method in ["POST","PUT"]:
-                payload = json.loads(request.data.decode('utf-8'))
-            args = request.args
-        self._printIncludes(1) # debug print
+            
         #self._model_class.get_instance("ALFKI") returns the Cusomter/OrderList/OrderDetailList and Product
         #util.row_to_dict(self._model_class.get_instance("ALFKI").OrderList[0].OrderDetailList[0].Product)
         #for f in util.row_to_dict(self._model_class.get_instance("ALFKI")).get("relationships") :print(f'{util.row_to_dict(self._model_class.get_instance("ALFKI"))}.{f}')
@@ -204,7 +192,36 @@ class CustomEndpoint():
         #"Manager" in self._model_class._s_relationships.keys() #_s_jsonapi_attrs.keys()
         #rom .jsonapi_formatting import jsonapi_filter_query, jsonapi_filter_list, jsonapi_sort, jsonapi_format_response, paginate
         #self._model_class.__mapper__.relationships.get("Manages").primaryjoin.left or right left.key or right.key
-        resource_logger.debug(f"execute CustomEndpoint on: {self._model_class_name} using alias: {self.alias}")
+      
+        '''
+
+        Returns:
+            dict: data dict from sql
+        """
+        args = {}
+        payload = {}
+        result = {}
+        jwt = ""
+        if request is not None:
+            jwt = request.headers.get("Authorization") or ""
+            method = request.method
+            args = request.args
+            self._printIncludes(1) # debug print
+            if method == 'DELETE':
+                raise ValidationError( 'Delete is not supported at this time')
+            elif method == 'OPTION':
+                return result
+            elif method in ["POST","PUT","PATCH"]:
+                try:
+                    payload = json.loads(request.data.decode('utf-8'))
+                    api = "api" # TODO Config.API_PREFIX.replace("/","")  
+                    serverURL = f"{request.host_url}{api}"
+                    url = f"{serverURL}/{self._model_class_name}"
+                    return self.handlePayload(method, payload, url, jwt)
+                except Exception as ex:
+                    raise ValidationError( f'{method} error on entity {self._model_class_name} msg: {ex}') from ex
+            
+        resource_logger.debug(f"CustomEndpoint execute on: {self._model_class_name} using alias: {self.alias}")
         filter_by = None
         #key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
         pkey , value = self.parseArgs(args)
@@ -217,7 +234,7 @@ class CustomEndpoint():
         limit = args.get("page[limit]") or 20
         offset = args.get("page[offset]") or 0
         order_by = args.get("sort")
-        result = {}
+       
         try:
             self._createRows(limit=limit,offset=offset,order_by=order_by,filter_by=filter_by) 
             self._executeChildren()
@@ -459,9 +476,10 @@ class CustomEndpoint():
                     for include in self.children:
                         include._linkAndModifyRows(dictRow, newRow)
 
-    def _modifyRow(self, tableRowDict: dict) -> dict:
+    def _modifyRow(self, dict_row: dict) -> dict:
+        #row = self.transform('LAC','',dict_row)
         newRow = DotDict({})
-        tableRow = DotDict(tableRowDict)
+        tableRow = DotDict(dict_row)
         if isinstance(self.fields, sqlalchemy.orm.attributes.InstrumentedAttribute):
             f = self.fields
             fieldName = f[0].key if isinstance(f, tuple) else f.key
@@ -496,6 +514,11 @@ class CustomEndpoint():
         if Config.OPT_LOCKING == "required" \
             and ("S_CheckSum" not in newRow and "S_CheckSum" in tableRow):
             newRow["S_CheckSum"] = tableRow.S_CheckSum
+            newRow = self.move_checksum(newRow)
+        elif "@metadata" in tableRow:
+            newRow["@metadata"] = tableRow["@metadata"]
+            if "S_CheckSum" in newRow:
+                newRow.pop("S_CheckSum")
             
     
     def addRowToResult(self, result: any, rows: any):
@@ -577,10 +600,75 @@ class CustomEndpoint():
             else:
                 self.children._parentResource = self
                 self.children.processIncludedRows(included)
-        
+                
+    def handlePayload(self, method: str, payload: any, url: str, jwt: str) -> any:
+        """ tests
+            stmt = ""
+            if method == 'POST':
+                stmt = insert(self._model_class).values(payload)
+            #elif  stmt = update(self._model_class).values(payload) #.where(self.primaryKey = 1)
+            clz = self._model_class
+            key = self.populateClass(clz, payload)
+            db.session.add(clz)
+            #db.engine.execute(stmt)
+            # db.session.select().filter_by().one()
+            return db.engine.execute(f"select * from {self._model_class_name} limit 1").one()
+        """
+        j = self.create_args(payload)
+        #TODO check payload for a single row
+        clz = self._model_class
+        #key = self.populateClass(clz, payload)
+        key = payload[self.primaryKey] if self.primaryKey in payload else "-1"
+        if Config.SECURITY_ENABLED:
+            header = {"Authorization": jwt,"Content-Type": "application/json","accept": "application/vnd.api+json"}
+            response = (
+                requests.post(url=url, json=j, headers=header)
+                if method == 'POST'
+                    else requests.patch(url=f"{url}/{key}", json=j, headers=header)
+            )
+        else:
+            response = (
+                requests.post(url=url, json=j) 
+                if method == "POST" 
+                    else requests.patch(url=f"{url}/{key}", data=j) 
+                )
+        return json.dumps(json.loads(response.text)["data"]["attributes"]) if response.status_code < 301 else response.content
+
+    def populateClass(self, clz, payload):
+        for p in payload:
+            clz(p = payload[p])
+        return clz[self.primaryKey]
+    
+    def create_args(self, attributes):
+        key = attributes[self.primaryKey] if self.primaryKey in attributes else None
+        result = None
+        if key is None:
+            result =  \
+                { "data": {
+                    "attributes": attributes,
+                    "type": self._model_class_name
+                }
+            }
+        else:
+            result = \
+                { "data": {
+                    "attributes": self.move_metadata(attributes),
+                    "type": self._model_class_name,
+                    "id": key
+                }
+            }
+        v =  str(result)
+        v = v.replace("'","\"",1000)
+        return json.loads(v.replace("None","null",100))
+
+    def move_metadata(self, json_dict:dict) -> dict:
+        if "@metadata" in json_dict:
+            json_dict["S_CheckSum"] = json_dict["@metadata"]["checksum"]
+            json_dict.pop("@metadata")
+        return json_dict
+         
     def quoteStr(self, val):
         return val if f"{self.primaryKeyType}" == 'INTEGER' else f"'{val}'"
-            
     
     def rows_to_dict(self: CustomEndpoint, result: flask_sqlalchemy.BaseQuery) -> list:
         """
@@ -627,7 +715,7 @@ class CustomEndpoint():
             row_as_dict.pop('links')
             row_as_dict.pop('relationships')
         if not hasattr(row_as_dict,"id"):
-             with contextlib.suppress(Exception):
+            with contextlib.suppress(Exception):
                 row_as_dict["id"] = row["id"] 
         return row_as_dict
 
@@ -659,3 +747,31 @@ class CustomEndpoint():
                 value = f[1]
         
         return pkey, value
+    
+    def transform(self, style:str, key:str, json_: dict) -> dict:
+	    # use this to change the output (pipeline) of the result
+        json_dict = {}
+        try:
+            json_dict = json.loads(json_) if isinstance(json_, str) else json_
+        except Exception as ex:
+            resource_logger.error(f"Transform Error on style {style} using key: {key} error: {ex}")
+            return json_
+
+        json_result = json_dict.get(key, json_dict) if key in json_dict else [json_dict]
+        if isinstance(json_result,list):
+            newRes = []
+            for row in json_result:
+                r = self.move_checksum(row)
+                newRes.append(r)
+            return newRes
+        return self.move_checksum(json_result)
+    
+
+    def move_checksum(self, json_dict:dict) -> dict:
+        if "S_CheckSum" in json_dict:
+            checksum = json_dict["S_CheckSum"]
+            json_dict["@metadata"] = { "checksum" : checksum}
+            json_dict.pop("S_CheckSum")
+        if "_check_sum_" in json_dict:
+            json_dict.pop("_check_sum_")
+        return json_dict
