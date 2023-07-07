@@ -1,0 +1,1 @@
+Copy these 2 files to [API Logic Server](https://apilogicserver.github.io/Docs/) ${PROJECT_HOME}/api/system
