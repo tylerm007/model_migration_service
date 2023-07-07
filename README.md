@@ -95,6 +95,14 @@ create table product (
 
 ALTER TABLE ADD CONSTRAINT fk_lineitem_purchaseorder FOREIGN KEY LineItem(order_number) REFERENCES PurchaseOrder(order_number)
 
+# Generate alternate endpoints if the ORM tableName is different from the SQL name
+@app.route('/LAC/rest/default/b2bderbynw/v1/user', methods=['GET', 'POST','PUT','OPTIONS'])
+@admin_required()
+def user():
+	root = CustomEndpoint(model_class=models.User)
+	result = root.execute(request)
+	return transform('LAC', 'user', result)
+
 ```
 
 ## Security
@@ -195,7 +203,7 @@ the optional fields= will allow the result to be reshaped
 the calling will pass each row to the defined function (create virtual attributes)
 the isParent= will treat MANY_TO_ONE relationship and return the parent row 
 ```
-    @@app.route('/partnerorder/<id>, methods=['GET'])
+    @@app.route('/rest/default/api/v1/partnerorder/<id>, methods=['GET'])
     def partnerorder(id):
         root = CustomEndpoint(models.Order,"PartnerOrder"
               ,fields=[ (models.Order.CustomerNumber, "CustomerNumber"), (models.Order.OrderNumber, "OrderNumber")]
@@ -222,5 +230,25 @@ curl -X 'GET' \
   'http://localhost:5656/api/partnerorder?Id=1000/
   -H 'accept: application/vnd.api+json' \
   -H 'Content-Type: application/vnd.api+json'
+
+```
+## Testing
+A separate NodeJS project named [apilogicservercli](https://github.com/tylerm007/apilogicservercli) can be used to login and execute secure commands to do GET/POST/PUT/DELETE.
+
+Resources and Data Sources will generate test scripts that can be used to validate generated endpoints.
+```
+=============================================================================================
+als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value
+=============================================================================================
+als login http://localhost:5656 -u u1 -p p -a nw
+Logging in...
+Login successful, JWT key will expire on: 2023-11-18T15:03:37.342Z
+
+# als get calling Entity ActorTemplate using: /LAC/rest/default/b2bderbynw/v1/Customers?page%5Blimit%5D=1
+als get "/LAC/rest/default/b2bderbynw/v1/Customers?page%5Blimit%5D=1" -k 1 
+
+
+# als calling endpoint: /LAC/rest/default/b2bderbynw/v1/Orders?page[limit]=1
+als get "/LAC/rest/default/b2bderbynw/v1/Orders?page%5Blimit%5D=1" 
 
 ```
