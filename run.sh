@@ -3,13 +3,14 @@
 
 rm *.txt
 export project=b2bderbynw
+export repos=/Users/guest/CALiveAPICreator.repository
 
-python3 reposreader.py --project $project --repos /Users/tylerband/CALiveAPICreator.repository --section security > declare_security.txt
+python3 reposreader.py --project $project --repos $repos --section security > declare_security.txt
 
-python3 reposreader.py --project $project --repos /Users/tylerband/CALiveAPICreator.repository --section rules > declare_logic.txt
+python3 reposreader.py --project $project --repos $repos --section rules > declare_logic.txt
 
-python3 reposreader.py --project $project --repos /Users/tylerband/CALiveAPICreator.repository --section resources > customize_api.txt
+python3 reposreader.py --project $project --repos $repos --section resources > customize_api.txt
 
-python3 reposreader.py --project $project --repos /Users/tylerband/CALiveAPICreator.repository --section data_sources > DataSources.txt
+python3 reposreader.py --project $project --repos $repos --section data_sources > DataSources.txt
 
-python3 reposreader.py --project $project --repos /Users/tylerband/CALiveAPICreator.repository --section all > allReport.txt
+python3 reposreader.py --project $project --repos $repos --section all > allReport.txt
