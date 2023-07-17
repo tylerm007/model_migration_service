@@ -3,7 +3,9 @@ import safrs
 import json
 import  pymysql 
 import sqlite3
+from safrs.errors import JsonapiError, ValidationError
 #import postresql TODO
+from flask import jsonify
 
 db = safrs.DB  
 
@@ -22,9 +24,11 @@ class FreeSQL():
         
         def execute(self, request):  
             data = []
-            #TODO make sure we validate security JWT 
+            # make sure we validate security JWT 
             # fixup sql 
             # open connection, cursor, execute , findAll() 
+            if request.method == 'OPTIONS':
+                return jsonify(success=True)
             sql = self.fixup(request)
             try:
                 print(f"FreeSQL SQL Expression={sql}")
@@ -44,10 +48,9 @@ class FreeSQL():
                     cursor = cur.execute(sql)
                     results = cur.fetchall()
                 data = json.dumps(results, indent=4,default=str) #TODO return Decimal() as str
-              
             except Exception as ex:
                 print(f"FreeSQL Error {ex}")
-                return {'error':f"{ex}"}
+                raise  ValidationError('FreeSQL error: {ex}')
                 
             return data 
         
@@ -108,6 +111,6 @@ class FreeSQL():
                     sql = sql.replace(":OFFSET", offset, 10)
                     #sql = sql.replace(":ORDER",orderStr, 10)
                 except Exception as ex:
-                    print(f"Error {ex}")
+                   print(f"FreeSQL fixup error {ex}")
                     
             return sql

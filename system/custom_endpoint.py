@@ -17,6 +17,7 @@ from sqlalchemy_utils.query_chain import QueryChain
 import flask_sqlalchemy
 import safrs
 from safrs.errors import JsonapiError, ValidationError
+from security.system.authorization import Security
 from typing import List, Dict, Tuple
 import util
 import json 
@@ -28,7 +29,7 @@ resource_logger = logging.getLogger("api.customize_api")
 db = safrs.DB 
 """this is a safrs db not DB"""
 session = db.session  # type: sqlalchemy.orm.scoping.scoped_session
-
+TENANT_ID =  "clientId"
 class DotDict(dict):
     """ dot.notation access to dictionary attributes """
     # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329
@@ -128,6 +129,8 @@ class CustomEndpoint():
         self._fkeyList: list = [] # foreign_key list (used by isParent) TODO collect when needed - do not store
         self._dictRows: list = [] # temporary holding for query results (Phase 1)
         self._parentRow = Dict[str, any] # keep track of linkage
+        self._method = None
+        self._columnNames = [k.key for k in self._model_class._s_columns]
 
     def __str__(self):
             print(
@@ -146,17 +149,18 @@ class CustomEndpoint():
             dict: JSON result
         """
         #TODO if security header needs Bearer token
+        if request.method == 'OPTIONS':
+            return jsonify(success=True)
         serverURL = f"{request.host_url}api"
         query = f"{serverURL}/{self._model_class_name}?include={include}"
         args = request.args
-        key, value = self.parseArgs(args)
-        #key = args.get(key) if args.get(key) is not None else args.get(f"filter[{key}]")
+        key, value,  limit, offset, order_by, filter_ = self.parseArgs(args)
         if altKey is not None:
             query += f"&filter%5B{self.primaryKey}%5D={altKey}"
         elif key is not None:
             query += f"&filter%5B{key}%5D={value}"
-        limit = args.get("page[limit]") or 10
-        offset = args.get("page[offset]") or 0
+        filter_by = filter_by if filter_ is None else f"{filter_by} and {filter_}" if filter_by is not None else filter_
+        print(f"limit: {limit}, offset: {offset}, sort: {order_by},filter_by: {filter_by}, add_filter {filter_}")
         params = {'page[limit]': limit, 'page[offset]': offset}
         resource_logger.debug(f"CustomEndpoint get using query: {query}")
         if Config.SECURITY_ENABLED:
@@ -205,12 +209,13 @@ class CustomEndpoint():
         if request is not None:
             jwt = request.headers.get("Authorization") or ""
             method = request.method
+            self._method = method
             args = request.args
             self._printIncludes(1) # debug print
             if method == 'DELETE':
                 raise ValidationError( 'Delete is not supported at this time')
-            elif method == 'OPTION':
-                return result
+            elif method == 'OPTIONS':
+                return jsonify(success=True)
             elif method in ["POST","PUT","PATCH"]:
                 try:
                     payload = json.loads(request.data.decode('utf-8'))
@@ -224,17 +229,15 @@ class CustomEndpoint():
         resource_logger.debug(f"CustomEndpoint execute on: {self._model_class_name} using alias: {self.alias}")
         filter_by = None
         #key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
-        pkey , value = self.parseArgs(args)
-        if value is not None:
+        pkey , value,  limit, offset, order_by , filter_  = self.parseArgs(args)
+        if value is not None and value != 'undefined':
             filter_by = f'{pkey} = {self.quoteStr(value)}'
             self._pkeyList.append(self.quoteStr(value))
         elif altKey is not None:
             filter_by = f'{pkey} = {self.quoteStr(altKey)}'
             self._pkeyList.append(self.quoteStr(altKey))
-        limit = args.get("page[limit]") or 20
-        offset = args.get("page[offset]") or 0
-        order_by = args.get("sort")
-       
+        filter_by = filter_by if filter_ is None else f"{filter_by} and {filter_}" if filter_by is not None else filter_
+        print(f"limit: {limit}, offset: {offset}, sort: {order_by},filter_by: {filter_by}, add_filter {filter_}")
         try:
             self._createRows(limit=limit,offset=offset,order_by=order_by,filter_by=filter_by) 
             self._executeChildren()
@@ -726,52 +729,86 @@ class CustomEndpoint():
         self._executeChildren()
         
     def parseArgs(self,args):
+        tenant_filter = None
+        _filter = None
         pkey = self.primaryKey
         value = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
         if value is None:
             _sys_filter:str = args.get("sysfilter") 
             _filter:str = args.get("filter")
+           
             """
             sysfilter=equal(fieldName, value)
-            filter=fieldName=value
+            filter=fieldName=value and fieldName=value
             
             """
+            client_id = Security.current_user().client_id if Config.SECURITY_ENABLED else "-1"
             if _sys_filter:
                  if _sys_filter.startswith("equal("):
-                    f = _sys_filter[6:-1].split(",")
+                    f = _sys_filter[6:-1].split(":")
                     pkey = f[0]
                     value = f[1]
             elif _filter:
                 f = _filter.split("=")
-                pkey = f[0]
-                value = f[1]
-        
-        return pkey, value
+                if (f[0] != TENANT_ID or f[1] != 'undefined') and f[0] == self.primaryKey:
+                    pkey = f[0]
+                    value = f[1]
+                if f[0] == TENANT_ID and f[1] == 'undefined':
+                    _filter = _filter.replace('clientId=undefined', f"clientId={client_id}")
+        limit = args.get("page[limit]") or args.get("pagesize") or 20
+        offset = args.get("page[offset]") or args.get("offset")  or 0
+        sort = args.get("sort")
+        # for k in self._model_class._s_columns: print(k.key == 'clientId')
+        if TENANT_ID in self._columnNames and  (_filter is not None and TENANT_ID not in _filter):
+            tenant_filter = f"{TENANT_ID}={client_id}"
+            tenant_filter = f"{tenant_filter} and {_filter}" if _filter is not None else tenant_filter
+        else:
+            tenant_filter = _filter if  _filter is not None else None
+
+        return pkey, value, limit, offset, sort, tenant_filter
     
     def transform(self, style:str, key:str, json_: dict) -> dict:
 	    # use this to change the output (pipeline) of the result
         json_dict = {}
+        json_result = []
+        result = []
         try:
+            if self._method == 'OPTIONS':
+                return json_
             json_dict = json.loads(json_) if isinstance(json_, str) else json_
+            json_result = json_dict.get(key, json_dict) if key in json_dict else [json_dict]
         except Exception as ex:
-            resource_logger.error(f"Transform Error on style {style} using key: {key} error: {ex}")
+            resource_logger.error(f"Transform Error on style {style} using key: {key} on {json_} error: {ex}")
             return json_
 
-        json_result = json_dict.get(key, json_dict) if key in json_dict else [json_dict]
+        
         if isinstance(json_result,list):
             newRes = []
             for row in json_result:
                 r = self.move_checksum(row)
                 newRes.append(r)
-            return newRes
-        return self.move_checksum(json_result)
+            result = newRes
+        result = self.move_checksum(json_result)
+        return result if isinstance(result,list) else [result]
     
 
-    def move_checksum(self, json_dict:dict) -> dict:
-        if "S_CheckSum" in json_dict:
-            checksum = json_dict["S_CheckSum"]
-            json_dict["@metadata"] = { "checksum" : checksum}
-            json_dict.pop("S_CheckSum")
-        if "_check_sum_" in json_dict:
-            json_dict.pop("_check_sum_")
+    def move_checksum(self, json_dict:any) -> dict:
+        if isinstance(json_dict, dict):
+            if "S_CheckSum" in json_dict:
+                checksum = json_dict["S_CheckSum"]
+                json_dict["@metadata"] = { "checksum" : checksum}
+                json_dict.pop("S_CheckSum")
+            if "_check_sum_" in json_dict:
+                json_dict.pop("_check_sum_")
+        elif isinstance(json_dict,list):
+            for json_ in json_dict:
+                self.move_checksum(json_)
+        if self.children is not None:
+            if isinstance(self.children, list):
+                for child in self.children:
+                    if child.alias in json_dict:
+                        child.move_checksum(json_dict[child.alias])
+            else:
+                if self.children.alias in json_dict:
+                        self.children.move_checksum(json_dict[self.children.alias])
         return json_dict

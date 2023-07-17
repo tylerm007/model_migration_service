@@ -248,7 +248,7 @@ Login successful, JWT key will expire on: 2023-11-18T15:03:37.342Z
 als get "/LAC/rest/default/b2bderbynw/v1/Customers?page%5Blimit%5D=1" -k 1 
 
 
-# als calling endpoint: /LAC/rest/default/b2bderbynw/v1/Orders?page[limit]=1
-als get "/LAC/rest/default/b2bderbynw/v1/Orders?page%5Blimit%5D=1" 
+# als patch endpoint: /LAC/rest/default/b2bderbynw/v1/Orders?filter[orderId]=1 - requires checksum
+als put "/LAC/rest/default/b2bderbynw/v1/Orders?filter%5BorderId%5D=1"  -j '{"@metadata":{"checkusm":"xx"},...somedata...}'
 
 ```
