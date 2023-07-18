@@ -130,6 +130,7 @@ class CustomEndpoint():
         self._dictRows: list = [] # temporary holding for query results (Phase 1)
         self._parentRow = Dict[str, any] # keep track of linkage
         self._method = None
+        self._href = None
         self._columnNames = [k.key for k in self._model_class._s_columns]
 
     def __str__(self):
@@ -157,10 +158,12 @@ class CustomEndpoint():
         key, value,  limit, offset, order_by, filter_ = self.parseArgs(args)
         if altKey is not None:
             query += f"&filter%5B{self.primaryKey}%5D={altKey}"
-        elif key is not None:
+        elif key is not None and value is not None:
             query += f"&filter%5B{key}%5D={value}"
-        filter_by = filter_by if filter_ is None else f"{filter_by} and {filter_}" if filter_by is not None else filter_
-        print(f"limit: {limit}, offset: {offset}, sort: {order_by},filter_by: {filter_by}, add_filter {filter_}")
+        else: 
+            query =  query if filter_ is None else f"{query} and {filter_}"
+        self._href = query
+        print(f"limit: {limit}, offset: {offset}, sort: {order_by}, query: {query}")
         params = {'page[limit]': limit, 'page[offset]': offset}
         resource_logger.debug(f"CustomEndpoint get using query: {query}")
         if Config.SECURITY_ENABLED:
@@ -225,7 +228,8 @@ class CustomEndpoint():
                     return self.handlePayload(method, payload, url, jwt)
                 except Exception as ex:
                     raise ValidationError( f'{method} error on entity {self._model_class_name} msg: {ex}') from ex
-            
+        serverURL = f"{request.host_url}api"
+        query = f"{serverURL}/{self._model_class_name}"
         resource_logger.debug(f"CustomEndpoint execute on: {self._model_class_name} using alias: {self.alias}")
         filter_by = None
         #key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
@@ -237,6 +241,7 @@ class CustomEndpoint():
             filter_by = f'{pkey} = {self.quoteStr(altKey)}'
             self._pkeyList.append(self.quoteStr(altKey))
         filter_by = filter_by if filter_ is None else f"{filter_by} and {filter_}" if filter_by is not None else filter_
+        self._href = query #TODO
         print(f"limit: {limit}, offset: {offset}, sort: {order_by},filter_by: {filter_by}, add_filter {filter_}")
         try:
             self._createRows(limit=limit,offset=offset,order_by=order_by,filter_by=filter_by) 
@@ -253,10 +258,12 @@ class CustomEndpoint():
         """
         if isinstance(self.children, CustomEndpoint):
             self.children._parentResource = self
+            self.children._href = self._href
             self.children._processChildren()
         elif len(self.children) > 0:
             for child in self.children:
                 child._parentResource = self
+                child._href = self._href
                 child._processChildren()
         
     def _collectPKeys(self, keyName)-> list:
@@ -796,7 +803,9 @@ class CustomEndpoint():
         if isinstance(json_dict, dict):
             if "S_CheckSum" in json_dict:
                 checksum = json_dict["S_CheckSum"]
-                json_dict["@metadata"] = { "checksum" : checksum}
+                pk = json_dict[self.primaryKey] if self.primaryKey in json_dict else ""
+                href = f"{self._href}/{pk}" if self._href is not None else ""
+                json_dict["@metadata"] = { "checksum" : checksum, "href": href}
                 json_dict.pop("S_CheckSum")
             if "_check_sum_" in json_dict:
                 json_dict.pop("_check_sum_")
