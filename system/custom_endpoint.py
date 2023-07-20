@@ -23,6 +23,7 @@ import util
 import json 
 import requests
 from config import Config
+from config import Args
 
 resource_logger = logging.getLogger("api.customize_api")
 
@@ -166,7 +167,7 @@ class CustomEndpoint():
         print(f"limit: {limit}, offset: {offset}, sort: {order_by}, query: {query}")
         params = {'page[limit]': limit, 'page[offset]': offset}
         resource_logger.debug(f"CustomEndpoint get using query: {query}")
-        if Config.SECURITY_ENABLED:
+        if Args.security_enabled:
             jwt = request.headers.get("Authorization") or ""
             header = {"Authorization": jwt,"Content-Type": "application/json"}
             result = requests.get(query, headers=header, params=params)
@@ -222,7 +223,7 @@ class CustomEndpoint():
             elif method in ["POST","PUT","PATCH"]:
                 try:
                     payload = json.loads(request.data.decode('utf-8'))
-                    api = "api" # TODO Config.API_PREFIX.replace("/","")  
+                    api = Args.api_prefix
                     serverURL = f"{request.host_url}{api}"
                     url = f"{serverURL}/{self._model_class_name}"
                     return self.handlePayload(method, payload, url, jwt)
@@ -521,7 +522,7 @@ class CustomEndpoint():
         return newRow
     
     def insertCheckSum(self, newRow: dict, tableRow: dict):
-        if Config.OPT_LOCKING == "required" \
+        if Args.opt_locking == "required" \
             and ("S_CheckSum" not in newRow and "S_CheckSum" in tableRow):
             newRow["S_CheckSum"] = tableRow.S_CheckSum
             newRow = self.move_checksum(newRow)
@@ -629,7 +630,7 @@ class CustomEndpoint():
         clz = self._model_class
         #key = self.populateClass(clz, payload)
         key = payload[self.primaryKey] if self.primaryKey in payload else "-1"
-        if Config.SECURITY_ENABLED:
+        if Args.security_enabled:
             header = {"Authorization": jwt,"Content-Type": "application/json","accept": "application/vnd.api+json"}
             response = (
                 requests.post(url=url, json=j, headers=header)
@@ -749,7 +750,7 @@ class CustomEndpoint():
             filter=fieldName=value and fieldName=value
             
             """
-            client_id = Security.current_user().client_id if Config.SECURITY_ENABLED else "-1"
+            client_id = Security.current_user().client_id if Args.security_enabled else "-1"
             if _sys_filter:
                  if _sys_filter.startswith("equal("):
                     f = _sys_filter[6:-1].split(":")
