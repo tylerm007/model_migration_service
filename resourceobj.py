@@ -94,8 +94,10 @@ class ResourceObj:
             space = "\t"
             name = self.name.lower()
             entity = self.entity
-            print(f"@app.route('{apiURL}/{name}', methods=['GET', 'POST','PUT','OPTIONS'])")
+            print(f"@app.route('{apiURL}/{name}', methods=['GET','POST','PUT','OPTIONS'])")
             print("@admin_required()")
+            print("@jwt_required()")
+            print("@cross_origin(supports_credentials=True)")
             print(f"def {name}():")
             print(f'{space}root = CustomEndpoint(model_class=models.{entity},alias="{self.name}"')
             self.printResAttrs(version, 1)
@@ -243,7 +245,9 @@ class ResourceObj:
         print(f"    #FreeSQL resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
         name = self.name.lower()
         space = "\t"
-        print(f"@app.route('{apiURL}/{name}', methods=['GET'])")
+        print(f"@app.route('{apiURL}/{name}', methods=['GET','OPTIONS'])")
+        print("@jwt_required()")
+        print("@cross_origin(supports_credentials=True)")
         print(f"def {name}():")
         print(f'{space}sql = get_{self.name}(request)')
         print(f'{space}return FreeSQL(sqlExpression=sql).execute(request)')

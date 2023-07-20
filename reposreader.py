@@ -570,8 +570,13 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
         if entry == "resources":
             resList: ResourceObj = buildResourceList(f"{path}{os.sep}{entry}")
             print("#Copy this section to ALS api/customize_api.py")
+            print("#from flask_cors import cross_origin")
+            print("#from api.system.custom_endpoint import CustomEndpoint, DotDict")
+            print('#from api.system.free_sql import FreeSQL')
+            print("")
             for resObj in resList:
                 resObj.PrintResource(version, apiURL)
+                
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
             print("def transform(style:str, result: dict) -> dict:")
