@@ -3,7 +3,7 @@
 
 rm *.txt
 export project=b2bderbynw
-export repos=/Users/guest/CALiveAPICreator.repository
+export repos=/Users/tylerband/CALiveAPICreator.repository
 
 python3 reposreader.py --project $project --repos $repos --section security > declare_security.txt
 
@@ -12,5 +12,9 @@ python3 reposreader.py --project $project --repos $repos --section rules > decla
 python3 reposreader.py --project $project --repos $repos --section resources > customize_api.txt
 
 python3 reposreader.py --project $project --repos $repos --section data_sources > DataSources.txt
+
+python3 reposreader.py --project $project --repos $repos --section tests > testScript.txt
+
+python3 reposreader.py --project $project --repos $repos --section functions > functions.txt
 
 python3 reposreader.py --project $project --repos $repos --section all > allReport.txt

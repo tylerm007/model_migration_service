@@ -122,11 +122,12 @@ def listFiles(path: Path):
                     print(f"     SQL: {entry.name}")
 
 
-def dataSource(path: Path):
-    # print("=========================")
-    # print("        SQL Tables ")
-    # print("=========================")
-    print("# This is informational only of the database schema, tables, columns")
+def dataSource(path: Path, no_print: bool = False):
+    # print("#=========================")
+    # print("#        SQL Tables ")
+    # print("#=========================")
+    if not no_print:
+        print("# This is informational only of the database schema, tables, columns")
     tableList = []
     with os.scandir(path) as entries:
         for f in entries:
@@ -142,21 +143,22 @@ def dataSource(path: Path):
                     url = j["url"]
                     uname = j["username"]
                     schema = j["schema"]
-                    print(
-                        "------------------------------------------------------------"
-                    )
-                    print(f"Database: {db} ")
-                    print(f"  URL:{url} ")
-                    print(f"  User: {uname} Schema: {schema}")
-                    ti = j["tableIncludes"]
-                    te = j["tableExcludes"]
-                    if ti != None:
-                        print(f"  TableIncludes: {ti}")
-                    if te != None:
-                        print(f"  TableExcludes: {te}")
-                    print(
-                        "------------------------------------------------------------"
-                    )
+                    if not no_print:
+                        print(
+                            "------------------------------------------------------------"
+                        )
+                        print(f"Database: {db} ")
+                        print(f"  URL:{url} ")
+                        print(f"  User: {uname} Schema: {schema}")
+                        ti = j["tableIncludes"]
+                        te = j["tableExcludes"]
+                        if ti != None:
+                            print(f"  TableIncludes: {ti}")
+                        if te != None:
+                            print(f"  TableExcludes: {te}")
+                        print(
+                            "------------------------------------------------------------"
+                        )
                     # ["metaHolder"] was prior to 5.4
                     tables = (
                         j["schemaCache"]["tables"]
@@ -164,10 +166,12 @@ def dataSource(path: Path):
                         else j["schemaCache"]["metaHolder"]["tables"]
                     )
                     for t in tables:
-                        print(" ")
+                        if not no_print:
+                            print(" ")
                         name = t["name"] if version == "5.4" else t["entity"]
                         tableList.append(name)
-                        print(f"create table {schema}.{name} (")
+                        if not no_print:
+                            print(f"create table {schema}.{name} (")
                         sep = ""
                         for c in t["columns"]:
                             name = c["name"]
@@ -187,18 +191,21 @@ def dataSource(path: Path):
                             nullable = (
                                 ""  # 'not null' if c["nullable"] == False else ''
                             )
-                            print(f"   {sep}{name} {baseType} {nullable} {autoIncr}")
-                            sep = ","
-                        print(")")
+                            if not no_print:
+                                print(f"   {sep}{name} {baseType} {nullable} {autoIncr}")
+                                sep = ","
+                                
                         for k in t["keys"]:
                             c = k["columns"]
                             cols = f"{c}"
                             cols = cols.replace("[", "")
                             cols = cols.replace("]", "")
-                            print("")
-                            print(f"# PRIMARY KEY({cols})")
-                            print("")
-                            # ["metaHolder"] was prior to 5.4
+                            if not no_print:
+                                print(")")
+                                print("")
+                                print(f"# PRIMARY KEY({cols})")
+                                print("")
+                    # ["metaHolder"] was prior to 5.4
                     if version == "5.4":
                         fkeys = j["schemaCache"]["foreignKeys"]
                     else:
@@ -209,34 +216,43 @@ def dataSource(path: Path):
                         child = fk["child"]["name"] if version == "5.4" else fk["child"]["object"]
                         parentCol = fk["columns"][0]["parent"]
                         childCol = fk["columns"][0]["child"]
-                        print("")
-                        print(
-                            f"  ALTER TABLE ADD CONSTRAINT fk_{name} FOREIGN KEY {child}({childCol}) REFERENCES {parent}({parentCol})"
-                        )
-                        print("")
-        print("=============================================================================================")
-        print("    ALS may change the name of tables (entity) - so create a endpoint with original name" )
-        print("=============================================================================================")
-        for name in tableList:
-            entity_name = to_camel_case(name)
-            entity_name = entity_name[:1].upper() + entity_name[1:]
-            print(f"@app.route('{apiurl}/{name}', methods=['GET', 'POST','PUT','OPTIONS'])")
-            print("@admin_required()")
-            print(f"def {name}():")
-            print(f'\troot = CustomEndpoint(model_class=models.{entity_name})')
-            print(f"\tresult = root.execute(request)")
-            print(f"\treturn root.transform('LAC', '{name.lower()}', result)")
-            print("")
-        #printTransform()
-        print("=============================================================================================")
-        print("    als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
-        print("=============================================================================================")
-        for tbl in tableList:
-            name = singular(tbl)
-            print(f"# als calling endpoint: {name}?page[limit]=1")
-            print(f'als get \"{apiurl}/{name}?page%5Blimit%5D=1\" -m json')
-            print("")
-            print("")
+                        if not no_print:
+                            print("")
+                            print(
+                                f"  ALTER TABLE ADD CONSTRAINT fk_{name} FOREIGN KEY {child}({childCol}) REFERENCES {parent}({parentCol})"
+                            )
+                            print("")
+
+    return tableList
+
+def printTableAsResource(tableList):
+    print("#=============================================================================================")
+    print("#    ALS may change the name of tables (entity) - so create a endpoint with original name" )
+    print("#    copy to als api/customize_api.py" )
+    print("#=============================================================================================")
+    print("")
+    for name in tableList:
+        entity_name = to_camel_case(name)
+        entity_name = entity_name[:1].upper() + entity_name[1:]
+        print(f"@app.route('{apiurl}/{name}', methods=['GET', 'POST','PUT','OPTIONS'])")
+        print("@admin_required()")
+        print(f"def {name}():")
+        print(f'\troot = CustomEndpoint(model_class=models.{entity_name})')
+        print(f"\tresult = root.execute(request)")
+        print(f"\treturn root.transform('LAC', '{name.lower()}', result)")
+        print("")
+
+def printTableTestCLI(tableList):
+    print("#=============================================================================================")
+    print("#    als command line tests for each table endpoint ?page[limit]=10&page[offset]=00&filter[key]=value")
+    print("#=============================================================================================")
+    print("")
+    for tbl in tableList:
+        name = singular(tbl)
+        print(f"# als calling endpoint: {name}?page[limit]=1")
+        print(f'als get \"{apiurl}/{name}?page%5Blimit%5D=1\" -m json')
+        print("")
+        print("")
 
 def singular(name: str) -> str:
     #return name[:-1] if name.endswith("s") else name  # singular names only
@@ -250,6 +266,11 @@ def resourceType(resource: object):
 def securityRoles(thisPath) -> list:
     path = f"{thisPath}/roles"
     roleList = []
+    print("=============================================================================================")
+    print("    Grant and Role based Access Control for user Security" )
+    print("    copy to security/declare_security.py" )
+    print("=============================================================================================")
+    print(" ")
     for dirpath, dirs, files in os.walk(path):
         path = dirpath.split("/")
         for f in files:
@@ -316,7 +337,7 @@ def getRootResources(resourceList: object):
     return [r for r in resourceList if r.parentName == 'v1']
 
 
-def buildResourceList(resPath: str):
+def buildResourceList(resPath: str, no_print:bool = False):
     # print("=========================")
     # print("       RESOURCES ")
     # print("=========================")
@@ -324,9 +345,10 @@ def buildResourceList(resPath: str):
     thisPath = f"{resPath}{os.sep}v1"
     for dirpath, dirs, files in os.walk(thisPath):
         path = dirpath.split(f"{os.sep}")
-        dirName = path[len(path) - 1]
         parentName = path[-1] if path[-1] == 'v1' else path[-2]
-        print("|", len(path) * "--", "D",dirName)
+        if not no_print:
+            dirName = path[len(path) - 1]
+            print("|", len(path) * "--", "D",dirName)
         for f in files:
             if f in ["ReadMe.md", ".DS_Store"]:
                 continue
@@ -337,7 +359,8 @@ def buildResourceList(resPath: str):
                     jsonObj = json.loads(data)
                     if "isActive" in jsonObj and jsonObj["isActive"] == False:
                         continue
-                    print("|", len(path) * "---", "F", f, "Entity:", printCols(jsonObj))
+                    if not no_print:
+                        print("|", len(path) * "---", "F", f, "Entity:", printCols(jsonObj))
                     drName = ','.join(path[:-1])
                     resObj = ResourceObj(parentName=parentName, parentDir=drName, jsonObj=jsonObj)
                     resources.append(resObj)
@@ -351,7 +374,7 @@ def buildResourceList(resPath: str):
                         if parentRes != None:
                             parentRes.childObj.append(resObj)
                     
-            else:
+            elif not no_print:
                 print("|", len(path) * "---", "F", f)
 
     return getRootResources(resources)
@@ -440,6 +463,10 @@ def rules(thisPath) -> list:
     Collect all of the rules definitions and JS info and stash in a list of RuleObj objects
     The object itself (rule.py) has print functions that do the transforms
     '''
+    print("#===========================================================")
+    print("#     Copy rules section to ALS logic/declare_logic.py")
+    print("#===========================================================")
+    print("")
     rules = []
     for dirpath, dirs, files in os.walk(thisPath):
         for f in files:
@@ -502,6 +529,41 @@ def printChild(self):
             return f"Name: {self.name} Entity: {self.entity} ResourceType: {self.ResourceType}"
         else:
             return f"Name: {self.name} Entity: {self.entity}  ResourceType: {self.ResourceType} ChildName: {self.childObj[0].name}"  # {print(childObj[0]) for i in childObj: print(childObj[i])}
+def lac_functions(thisPath):
+    path = f"{thisPath}"
+    lac_func = []
+    for dirpath, dirs, files in os.walk(path):
+        path = dirpath.split("/")
+        for f in files:
+            if f in ["ReadMe.md", ".DS_Store"]:
+                continue
+            fname = os.path.join(dirpath, f)
+            if fname.endswith(".json"):
+                with open(fname) as myfile:
+                    d = myfile.read()
+                    j = json.loads(d)
+                    isActive = j["isActive"]
+                    if isActive:
+                        func_type = j["functionType"]
+                        if func_type == "rowLevel":
+                            comments = j["comments"]
+                            if comments != "":
+                                print('"""')
+                                print(f"comments: {comments}")
+                                print('"""')
+                            name = j["name"]
+                            appliesTo = j["appliesTo"]
+                            params = j["parameters"]
+                            print(f"#RowLevel Function: {name} appliesTo: {appliesTo} params: {params}")
+                            fn = f.split(".")[0] + ".js"
+                            javaScriptFile = findInFiles(dirpath, files, fn)
+                            print(f"def fn_rowlevel_{name}(params: any) -> dict:")
+                            print("'''")
+                            print(fixup(javaScriptFile))
+                            print("'''")
+                            print("")
+                            lac_func.append(name)
+    return lac_func
 
 def pipeline(thisPath):
     path = f"{thisPath}"
@@ -547,13 +609,28 @@ def printTests(resObj: ResourceObj, apiURL: str):
 
 def listDirs(path: Path, section: str = "all", apiURL: str=""):
     setVersion(path)
-    print(f"LAC Version: {version}")
+    print(f"# LAC Version: {version}")
     for entry in os.listdir(path):
         # for dirpath, dirs, files in os.walk(basepath):
+        if section == "tests":
+            print("")
+            print("#===========================================================")
+            print("#    ALS Command Line tests for each Resource endpoint")
+            print("#===========================================================")
+            print("als login http://localhost:5656 -u u1 -p p -a nw")
+            print("")
+            resList: ResourceObj = buildResourceList(f"{path}{os.sep}resources", no_print=True)
+            for res in resList:
+                printTests(res, apiURL=apiURL)
+            fp = f"{path}{os.sep}data_sources"
+            tableList = dataSource(fp, no_print=True)
+            printTableTestCLI(tableList=tableList)
+            break
+        
         if section.lower() != "all" and entry != section:
             continue
 
-        filePath = f"{path}{os.sep}{entry}"
+
         if entry in [
             "api.json",
             "issues.json",
@@ -562,34 +639,24 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             ".DS_Store",
         ]:
             continue
+        
+        filePath = f"{path}{os.sep}{entry}"
         print("")
         print("=========================")
         print(f"       {entry.upper()} ")
         print("=========================")
-
         if entry == "resources":
-            resList: ResourceObj = buildResourceList(f"{path}{os.sep}{entry}")
             print("#Copy this section to ALS api/customize_api.py")
             print("#from flask_cors import cross_origin")
             print("#from api.system.custom_endpoint import CustomEndpoint, DotDict")
             print('#from api.system.free_sql import FreeSQL')
             print("")
+            resList: ResourceObj = buildResourceList(f"{path}{os.sep}{entry}")
             for resObj in resList:
                 resObj.PrintResource(version, apiURL)
                 
             for resObj in resList:
                 resObj.PrintResourceFunctions(resObj._name, version)
-            print("def transform(style:str, result: dict) -> dict:")
-            print(f"\t# use this to change the output (pipeline) of the result")
-            print(f"\treturn result")
-            print("")
-            print("===========================================================")
-            print("    ALS Command Line tests for each Resource endpoint")
-            print("===========================================================")
-            print("als login http://localhost:5656 -u u1 -p p -a nw")
-            print("")
-            for resObj in resList:
-                printTests(resObj, apiURL)
             
             print("#FreeSQL section to ALS api/customize_api.py")
             for resObj in resList:
@@ -599,8 +666,6 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
         if entry == "rules":
             rulesList = rules(filePath)
             entities = entityList(rulesList)
-            # Table of Contents
-            print("#Copy this section to ALS logic/declare_logic.py")
             for entity in entities:
                 entityName = to_camel_case(entity)
                 print(f"# ENTITY: {entityName}")
@@ -611,11 +676,12 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             continue
 
         if entry == "data_sources":
-            dataSource(filePath)
+            tableList = dataSource(filePath)
+            printTableAsResource(tableList)
             continue
 
-        if entry in ["request_events" ,"pipelines", "libraries", "functions"]:
-            print(f"#These are JavaScript {entry} can be called by rules and resources")
+        if entry in ["request_events" ,"pipelines", "libraries"]:
+            print(f"# These are JavaScript {entry} can be called by rules and resources")
             functionList(filePath)
             continue
 
@@ -624,7 +690,6 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             continue
 
         if entry == "security":
-            print("# copy to security/declare_security.py")
             roleList = securityRoles(filePath)
             print("class Roles():")
             for r in roleList:
@@ -643,18 +708,22 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
             pipeline(filePath)
             continue
         
+        if entry == "functions":
+            lac_functions(filePath)
+            continue
+        
         printDir(f"{basepath}{os.sep}{entry}")
 
 
 projectName = "b2bderbynw"
-apiurl = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL
+apiurl = f"/rest/default/{projectName}/v1" # this is used for building the resource URL
 apiroot = "teamspaces/default/apis"
 
 reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{apiroot}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "all" # all is default or resources, rules, security, pipeline_events, data_sources , etc.
+section = "all" # all is default or resources, rules, security, pipeline_events, data_sources , tests, etc.
 
 if __name__ == "__main__":
     main()
