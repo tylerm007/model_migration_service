@@ -40,6 +40,11 @@ MAC EXAMPLE:
 python3 reposreader.py demo /Users/user1/CALiveAPICreator.repository rules
 ```
 
+## Architecture
+LAC uses a file based repository. MMS will read the JSON, JS, and SQL files to create reports for each section that may be copied to ALS.  The conversion of JS to Python requires some manual fixup.
+
+![image](./architecture.png)
+
 ## Skip Sections and Files
 This version skips the following files
 ```
