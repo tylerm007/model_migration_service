@@ -46,7 +46,7 @@ def main(calling_args=None):
         reposLocation = args.repos
         sections = args.section or "all"
         apiURL = f"/LAC/rest/default/{projectName}/v1" # this is used for building the resource URL 
-        basepath = f"{reposLocation}/{apiroot}/{projectName}"
+        basepath = f"{reposLocation}/{api_root}/{projectName}"
     try:
         readTableAlias()
         listDirs(basepath, sections, apiURL)
@@ -717,10 +717,10 @@ def listDirs(path: Path, section: str = "all", apiURL: str=""):
 
 projectName = "b2bderbynw"
 apiurl = f"/rest/default/{projectName}/v1" # this is used for building the resource URL
-apiroot = "teamspaces/default/apis"
-
-reposLocation = "/Users/tylerband/CALiveAPICreator.repository"
-basepath = f"{reposLocation}/{apiroot}/{projectName}"
+api_root = "teamspaces/default/apis"
+running_at = Path(__file__)
+reposLocation = f"{running_at.parent}/CALiveAPICreator.repository"
+basepath = f"{reposLocation}/{api_root}/{projectName}"
 version = "5.4"
 command = "not set"
 section = "all" # all is default or resources, rules, security, pipeline_events, data_sources , tests, etc.
