@@ -1,4 +1,4 @@
-# Archimedes
+# Model Migration Service
 
 This project reads the CA Live API Creator (LAC) repos to parse objects into a report that can be used by API Logic Server (ALS). This document can help understand how to process to [Migrate from LAC to ALS](https://docs.google.com/document/d/1ULL9sMepOQd4SEwTEl0OP7p7PzEy56Rw2FGkPigUrMc/edit?usp=sharing)
 
@@ -47,7 +47,7 @@ This version skips the following files
 ```
 
 ## Rules
-The code will attempt to define a function and rule in Api Logic Server format. It will also try to convert JavaScript to Python - formatting will need to be done manually. Copy the report content to your ALS project directory api/customize_api.py.
+The code will define a function and rule in Api Logic Server (ALS) Python format. It will also attempt to convert JavaScript to Python - formatting may need to be done manually. Copy the report content to your ALS project directory api/customize_api.py.
 ```
 =========================
        rules 
@@ -72,7 +72,7 @@ def fn_formula_amount(row: models.LineItem, old_row: models.LineItem, logic_row:
 
 
 ## Data Sources
-The datasource will generate a sample table, columns, keys, and foreign keys. Note: views and procedures not shown in this version.
+The data_sourced will generate a sample table, columns, keys, and foreign keys. Note: views and procedures not shown in this version. The report will also include API REST endpoints for each table.  This is optional and can be used if the ALS generated API names do not match the LAC table names.
 ```
 =========================
        data_sources 
