@@ -68,17 +68,17 @@ class CustomEndpoint():
     """
 
     def __init__(self
-                 , model_class: DeclarativeMeta | None
-                 , alias: str = ""
-                 , fields: list[tuple[Column, str] | Column] = []
-                 , children: list[CustomEndpoint] | CustomEndpoint = []
-                 , join_on: list[tuple[Column] | Column] = None
-                 , calling: callable = None
-                 , filter_by: str = None
-                 , order_by: Column = None
-                 , isParent: bool = False
-                 , isCombined: bool = False
-                 ):
+            , model_class: DeclarativeMeta | None
+            , alias: str = ""
+            , fields: list[tuple[Column, str] | Column] = []
+            , children: list[CustomEndpoint] | CustomEndpoint = []
+            , join_on: list[tuple[Column] | Column] = None
+            , calling: callable = None
+            , filter_by: str = None
+            , order_by: Column = None
+            , isParent: bool = False
+            , isCombined: bool = False
+            ):
         """
 
         Declare a custom yser shaped resource.
@@ -112,11 +112,10 @@ class CustomEndpoint():
         self.join_on = join_on 
         self.isParent= isParent 
     
-        # TODO 
         if isinstance(join_on, tuple):
             if len(join_on) > 0:
                 # get parent or child
-                self.foreignKey = join_on[0] #TODO - if we have multiple joins
+                self.foreignKey = join_on[0] # - if we have multiple joins
         else:
             self.foreignKey = join_on
 
@@ -126,8 +125,8 @@ class CustomEndpoint():
         self._model_class_name: str = self._model_class._s_class_name
         # inspect(model_class).primary_key[0].type = Integer() ...
         self._parentResource: CustomEndpoint = None  # ROOT
-        self._pkeyList: list = [] # primary key list TODO collect when needed - do not store
-        self._fkeyList: list = [] # foreign_key list (used by isParent) TODO collect when needed - do not store
+        self._pkeyList: list = [] # primary key list  collect when needed - do not store
+        self._fkeyList: list = [] # foreign_key list (used by isParent)  collect when needed - do not store
         self._dictRows: list = [] # temporary holding for query results (Phase 1)
         self._parentRow = Dict[str, any] # keep track of linkage
         self._method = None
@@ -150,9 +149,9 @@ class CustomEndpoint():
         Returns:
             dict: JSON result
         """
-        #TODO if security header needs Bearer token
         if request.method == 'OPTIONS':
             return jsonify(success=True)
+        
         serverURL = f"{request.host_url}api"
         query = f"{serverURL}/{self._model_class_name}?include={include}"
         args = request.args
@@ -163,7 +162,7 @@ class CustomEndpoint():
             query += f"&filter%5B{key}%5D={value}"
         else: 
             query =  query if filter_ is None else f"{query} and {filter_}"
-        self._href = query
+        self._href = f"{request.url_root[:-1]}{request.path}"
         print(f"limit: {limit}, offset: {offset}, sort: {order_by}, query: {query}")
         params = {'page[limit]': limit, 'page[offset]': offset}
         resource_logger.debug(f"CustomEndpoint get using query: {query}")
@@ -242,7 +241,7 @@ class CustomEndpoint():
             filter_by = f'{pkey} = {self.quoteStr(altKey)}'
             self._pkeyList.append(self.quoteStr(altKey))
         filter_by = filter_by if filter_ is None else f"{filter_by} and {filter_}" if filter_by is not None else filter_
-        self._href = query #TODO
+        self._href = f"{request.url_root[:-1]}{request.path}"
         print(f"limit: {limit}, offset: {offset}, sort: {order_by},filter_by: {filter_by}, add_filter {filter_}")
         try:
             self._createRows(limit=limit,offset=offset,order_by=order_by,filter_by=filter_by) 
@@ -626,7 +625,7 @@ class CustomEndpoint():
             return db.engine.execute(f"select * from {self._model_class_name} limit 1").one()
         """
         j = self.create_args(payload)
-        #TODO check payload for a single row
+        # check payload for a single row
         clz = self._model_class
         #key = self.populateClass(clz, payload)
         key = payload[self.primaryKey] if self.primaryKey in payload else "-1"
