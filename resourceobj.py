@@ -89,7 +89,8 @@ class ResourceObj:
 
     def PrintResource(self, version: str, apiURL: str = ""):
         if not self.isActive or self.ResourceType != "TableBased":
-            self.printFreeSQL(apiURL)
+            self.PrintFreeSQL(apiURL)
+            self.PrintJavaScript(apiURL)
         else:
             space = "\t"
             name = self.name.lower()
@@ -238,11 +239,11 @@ class ResourceObj:
                     ret.append(jo)
         return ret
     
-    def printFreeSQL(self, apiURL: str = ""):
+    def PrintFreeSQL(self, apiURL: str = ""):
         # Return the SQL statement used by a FreeSQL query
-        if self.ResourceType != "FreeSQL" or not self.isActive:
+        if self.ResourceType not in ["FreeSQL"] or not self.isActive:
             return
-        print(f"    #FreeSQL resource: {self._name} ResourceType: {self.ResourceType} isActive: {self.isActive}")
+        print(f"#ResourceType: {self.ResourceType} ResourceName: {self._name} isActive: {self.isActive}")
         name = self.name.lower()
         space = "\t"
         print(f"@app.route('{apiURL}/{name}', methods=['GET','OPTIONS'])")
@@ -253,14 +254,39 @@ class ResourceObj:
         print(f'{space}return FreeSQL(sqlExpression=sql).execute(request)')
         print("")
        
-        print(f"def get_{name}(*args):")
+        print(f"def get_{name}(request):")
         print(f'{space}pass')
+        print(f"{space}args = request.args")
         print(f'{space}#argValue = args.get("argValueName")')
         print(f'{space}"""')
         print(f"{space}return {fixupSQL(self.jsSQL)}")
         print(f'{space}"""')
         print("")
-
+        
+    def PrintJavaScript(self, apiURL: str = ""):
+        # Return the SQL statement used by a FreeSQL query
+        if self.ResourceType not in ["JavaScript"] or not self.isActive:
+            return
+        print(f"#ResourceType: {self.ResourceType} ResourceName: {self._name} isActive: {self.isActive}")
+        name = self.name.lower()
+        space = "\t"
+        print(f"@app.route('{apiURL}/{name}', methods=['GET','OPTIONS'])")
+        print("@jwt_required()")
+        print("@cross_origin(supports_credentials=True)")
+        print(f"def {name}():")
+        print(f'{space}js = get_{self.name}(request)')
+        print(f'{space}return JavaScript(javaScript=js).execute(request)')
+        print("")
+       
+        print(f"def get_{name}(request):")
+        print(f'{space}pass')
+        print(f"{space}args = request.args")
+        print(f'{space}#argValue = args.get("argValueName")')
+        print(f'{space}"""')
+        print(f"{space}return {self._jsObj}")
+        print(f'{space}"""')
+        print("")
+        
 if __name__ == "__main__":
     jsonObj = {
         "name": "foo",
@@ -278,5 +304,6 @@ if __name__ == "__main__":
     resObj = ResourceObj(parentName="v1", parentDir="", jsonObj=jsonObj)
     resObj.PrintResource("5.4","/rest/default/nw/v1")
     resObj.PrintResourceFunctions("root", "5.4")
-    resObj.printFreeSQL("/rest/default/nw/v1")
+    resObj.PrintFreeSQL("/rest/default/nw/v1")
+    resObj.PrintJavaScript("/rest/default/nw/v1")
 
