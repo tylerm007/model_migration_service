@@ -51,14 +51,17 @@ def create_file(parent_dir:str, file_name: str, content: str):
 def main():
     file_with_path = "/Users/tylerband/Downloads/FedEx_POC_1/023-Check-in.json"
     json_rows = readJSONReposFile(fileName=file_with_path)
-    file_dir = f"{project_name}"
+    file_dir = f"{basepath}"
     create_root_dir()
     for l in json_rows:
+        # do all the files first
+        if l[:3] == "{f}":
+            create_file(file_dir, l[3:], json_rows[l])
+    for l in json_rows:
+        #Do all the root directories for project
         if l[:3] == "{d}":
             file_dir = f"{basepath}{os.sep}{l[3:]}"
             create_directory(file_dir, json_rows[l])
-        if l[:3] == "{f}":
-            create_file(file_dir, l[3:], json_rows[l])
 
 def create_root_dir():
     isExist = os.path.exists(basepath)
