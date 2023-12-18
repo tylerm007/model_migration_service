@@ -13,8 +13,8 @@ The JavaScript requires some fixup to Python and some LAC built-in may not be su
 
 ## Install
 ```
-git clone https://github.com/tylerm007/fileReader.git
-cd fileReader
+git clone https://github.com/tylerm007/model_migration_service.git
+cd model_migration_service
 python3 install venv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
@@ -257,3 +257,6 @@ als get "/LAC/rest/default/b2bderbynw/v1/Customers?page%5Blimit%5D=1" -k 1
 als put "/LAC/rest/default/b2bderbynw/v1/Orders?filter%5BorderId%5D=1"  -j '{"@metadata":{"checkusm":"xx"},...somedata...}'
 
 ```
+
+## Behave Testing
+See the test/api_logic_server/feature folder for generated GET and PATCH stubs used for building TDD (test driven development).

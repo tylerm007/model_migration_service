@@ -1,0 +1,10 @@
+{
+    "name": "csamUtils",
+    "version": "1.0",
+    "isUsedByProject": true,
+    "title": "csamUtils",
+    "description": "Small common utilities",
+    "groupName": "newlib",
+    "docsURL": null,
+    "referenceURL": null
+}

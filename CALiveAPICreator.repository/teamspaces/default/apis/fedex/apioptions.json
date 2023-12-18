@@ -1,0 +1,7 @@
+{
+    "Permit Authorization parameter in URL": {
+        "dataType": "boolean",
+        "value": true,
+        "defaultValue": false
+    }
+}

@@ -1,0 +1,36 @@
+{
+    "name": "CSAPPS_PROGRAMS",
+    "prefix": "main",
+    "title": null,
+    "databaseType": "ORACLE",
+    "comments": null,
+    "isActive": true,
+    "isLogErrors": false,
+    "isSchemaEditable": false,
+    "isSupportBoolean": false,
+    "useDefinedModel": false,
+    "isReadOnly": false,
+    "useJNDIDataSource": false,
+    "url": "jdbc:oracle:thin:@ldap://eusoud.prod.fedex.com/CSAM_CAN_DEV_COLO_SVC,cn=OracleContext",
+    "catalog": null,
+    "schema": "CSAMDEV_SCHEMA",
+    "username": "CSAMDEV_APP",
+    "maximumConnections": 20,
+    "tableExcludes": null,
+    "tableIncludes": "ARI_023_NOTES\nARI_023_SHIPMENTS",
+    "procedureExcludes": null,
+    "procedureIncludes": null,
+    "nonPersistentAttributes": {},
+    "tableInfos": {},
+    "viewInfos": {
+        "V_A023_SHPMT_NOTES": {
+            "autoNumColumns": [],
+            "virtualPrimaryKeyColumns": [
+                "SHIPID"
+            ],
+            "sequenceUsage": {},
+            "extendedProperties": null
+        }
+    },
+    "procedureInfos": {}
+}

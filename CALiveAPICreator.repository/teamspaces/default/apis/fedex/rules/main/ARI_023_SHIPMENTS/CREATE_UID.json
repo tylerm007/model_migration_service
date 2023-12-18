@@ -1,0 +1,15 @@
+{
+    "name": "CREATE_UID",
+    "entity": "ARI_023_SHIPMENTS",
+    "isActive": true,
+    "ruleType": "formula",
+    "attribute": "CREATE_UID",
+    "codeType": "JavaScript",
+    "isJIT": false,
+    "isAutoTitle": false,
+    "title": "CREATE_UID",
+    "comments": null,
+    "topics": [
+        "UID"
+    ]
+}

@@ -1,0 +1,36 @@
+{
+    "name": "IT_TEST_ADMIN",
+    "description": null,
+    "defaultTablePermission": "RIU",
+    "defaultViewPermission": "RIU",
+    "defaultFunctionPermission": "X",
+    "globals": [],
+    "apiVisibility": {
+        "table": {
+            "isRestricted": false,
+            "restrictedTo": null
+        },
+        "view": {
+            "isRestricted": false,
+            "restrictedTo": null
+        },
+        "resource": {
+            "isRestricted": false,
+            "restrictedTo": null
+        },
+        "procedure": {
+            "isRestricted": false,
+            "restrictedTo": null
+        },
+        "metatable": {
+            "isRestricted": false,
+            "restrictedTo": null
+        },
+        "function": {
+            "isRestricted": false,
+            "restrictedTo": null
+        }
+    },
+    "entityPermission": {},
+    "functionPermission": {}
+}

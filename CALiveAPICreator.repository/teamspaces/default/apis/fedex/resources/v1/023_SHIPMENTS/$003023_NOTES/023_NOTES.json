@@ -1,0 +1,52 @@
+{
+    "name": "023_NOTES",
+    "description": null,
+    "siblingRank": 100,
+    "resourceType": "TableBased",
+    "prefix": "main",
+    "entity": "ARI_023_NOTES",
+    "join": "\"SHIPID\" = [\"SHIPID\"]",
+    "isCollection": true,
+    "filter": null,
+    "order": null,
+    "useSchemaAttributes": false,
+    "attributes": [
+        {
+            "name": "Note_ID",
+            "attribute": "NOTESID",
+            "description": "Note ID",
+            "isKey": false
+        },
+        {
+            "name": "Ship_ID",
+            "attribute": "SHIPID",
+            "description": "Shipment ID",
+            "isKey": false
+        },
+        {
+            "name": "NOTES",
+            "attribute": "NOTES",
+            "description": "Notes/Instructions",
+            "isKey": false
+        },
+        {
+            "name": "CREATE_TMSTP",
+            "attribute": "CREATE_TMSTP",
+            "description": null,
+            "isKey": false
+        },
+        {
+            "name": "CREATE_TMSTP_ET",
+            "attribute": null,
+            "description": "CREATE_TMSTP in America/Toronto",
+            "jsonType": "string",
+            "isHidden": false
+        },
+        {
+            "name": "CREATE_UID",
+            "attribute": "CREATE_UID",
+            "description": null,
+            "isKey": false
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+{
+    "name": "023_SHIPMENTS_TABLEDUMP",
+    "description": null,
+    "siblingRank": 100,
+    "resourceType": "FreeSQL",
+    "prefix": "main",
+    "isCollection": true
+}

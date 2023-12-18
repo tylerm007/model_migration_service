@@ -1,0 +1,62 @@
+{
+    "name": "023_SHIPMENTS",
+    "description": null,
+    "siblingRank": 100,
+    "resourceType": "TableBased",
+    "prefix": "main",
+    "entity": "ARI_023_SHIPMENTS",
+    "isCollection": true,
+    "filter": null,
+    "order": "order by ARRIVALDATE asc, LOCATION, FLT, SHIPID",
+    "useSchemaAttributes": false,
+    "attributes": [
+        {
+            "name": "Ship_ID",
+            "attribute": "SHIPID",
+            "description": "Shipment ID",
+            "isKey": false
+        },
+        {
+            "name": "Arr_Date",
+            "attribute": "ARRIVALDATE",
+            "description": "Arrival Date",
+            "isKey": false
+        },
+        {
+            "name": "Port",
+            "attribute": "LOCATION",
+            "description": "Airport Code",
+            "isKey": false
+        },
+        {
+            "name": "Flt_Nbr",
+            "attribute": "FLT",
+            "description": "Flight Number",
+            "isKey": false
+        },
+        {
+            "name": "AWB",
+            "attribute": "AWBNUM",
+            "description": "Airwaybill",
+            "isKey": false
+        },
+        {
+            "name": "PCs",
+            "attribute": "PC",
+            "description": "Pieces",
+            "isKey": false
+        },
+        {
+            "name": "Admit_Status",
+            "attribute": "STATUS",
+            "description": "Admissibility Status",
+            "isKey": false
+        },
+        {
+            "name": "Recvd",
+            "attribute": "REC",
+            "description": "Received",
+            "isKey": false
+        }
+    ]
+}

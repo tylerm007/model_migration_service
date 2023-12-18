@@ -1,0 +1,10 @@
+{
+    "name": "runtimeConfig",
+    "version": "1.0",
+    "isUsedByProject": true,
+    "title": "RuntimeConfiguration",
+    "description": "Returns the deployment runtime configuration in the Common project cscom/runtime/configuration resource.  It is stored in the extendedProperties.js (a json file) of the runtime/configuration resource of cscom.\n\nCall as commonRuntimeConfiguration();",
+    "groupName": "newlib",
+    "docsURL": null,
+    "referenceURL": null
+}

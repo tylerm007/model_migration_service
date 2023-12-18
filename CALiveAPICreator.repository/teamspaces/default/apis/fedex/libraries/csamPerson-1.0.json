@@ -1,0 +1,10 @@
+{
+    "name": "csamPerson",
+    "version": "1.0",
+    "isUsedByProject": true,
+    "title": "csamPerson",
+    "description": "library to make accessing PERSON records easy.",
+    "groupName": "newlib",
+    "docsURL": null,
+    "referenceURL": null
+}

@@ -1,0 +1,7 @@
+{
+    "name": "023-Check-in",
+    "urlFragment": "chkn",
+    "comments": "CSAPPS_OWNER DEV 023 Check-in",
+    "isEnabled": true,
+    "authProviderName": null
+}

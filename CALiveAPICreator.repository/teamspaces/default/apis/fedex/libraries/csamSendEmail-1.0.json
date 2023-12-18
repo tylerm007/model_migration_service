@@ -1,0 +1,10 @@
+{
+    "name": "csamSendEmail",
+    "version": "1.0",
+    "isUsedByProject": true,
+    "title": "csamSendEmail",
+    "description": null,
+    "groupName": "newlib",
+    "docsURL": null,
+    "referenceURL": null
+}

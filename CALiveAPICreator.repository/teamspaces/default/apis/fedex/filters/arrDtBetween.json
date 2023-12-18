@@ -1,0 +1,8 @@
+{
+    "name": "arrDtBetween",
+    "description": "Filter : Arrival Date Between dates",
+    "isRestricted": true,
+    "appliesTo": [
+        "023_SHIPMENTS"
+    ]
+}

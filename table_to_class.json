@@ -1,0 +1,19 @@
+{
+    "CategoryTableNameTest":"Category",
+    "Customer":"Customer",
+    "CustomerDemographic":"CustomerDemographic",
+    "Department":"Department",
+    "Employee":"Employee",
+    "EmployeeAudit":"EmployeeAudit",
+    "EmployeeTerritory":"EmployeeTerritory",
+    "Location":"Location",
+    "Order":"Order",
+    "OrderDetail":"OrderDetail",
+    "Product":"Product",
+    "Region":"Region",
+    "SampleDBVersion":"SampleDBVersion",
+    "Shipper":"Shipper",
+    "Supplier":"Supplier",
+    "Territory":"Territory",
+    "Union":"Union"
+}

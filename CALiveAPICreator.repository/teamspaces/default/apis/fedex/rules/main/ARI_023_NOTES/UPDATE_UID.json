@@ -1,0 +1,15 @@
+{
+    "name": "UPDATE_UID",
+    "entity": "ARI_023_NOTES",
+    "isActive": true,
+    "ruleType": "formula",
+    "attribute": "UPDATE_UID",
+    "codeType": "JavaScript",
+    "isJIT": false,
+    "isAutoTitle": false,
+    "title": "UPDATE_UID",
+    "comments": null,
+    "topics": [
+        "UID"
+    ]
+}

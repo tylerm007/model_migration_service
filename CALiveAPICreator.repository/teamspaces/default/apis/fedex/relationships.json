@@ -1,0 +1,16 @@
+[
+    {
+        "parentEntity": "main:ARI_023_SHIPMENTS",
+        "childEntity": "main:ARI_023_NOTES",
+        "roleToParent": "ARI_023_SHIPMENTS",
+        "roleToChild": "ARI_023_NOTES_List",
+        "deleteRule": "No Action",
+        "updateRule": "No Action",
+        "parentColumns": [
+            "SHIPID"
+        ],
+        "childColumns": [
+            "SHIPID"
+        ]
+    }
+]

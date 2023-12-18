@@ -2,7 +2,7 @@
 # This is a sample on how to create conversion files for CA Live API Creator to API Logic Server
 
 rm *.txt
-project=b2bderbynw
+project=fedex
 repos=C:\CALiveAPICreator.repository
 
 python3 reposreader.py --project $project --repos $repos --section security > declare_security.txt

@@ -1,0 +1,13 @@
+{
+    "name": "Admin key",
+    "authToken": "LACadminAuth",
+    "description": null,
+    "userIdentifier": null,
+    "isActive": true,
+    "expiration": null,
+    "logging": "*=FINE",
+    "roles": [
+        "Full access"
+    ],
+    "globals": {}
+}
