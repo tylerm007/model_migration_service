@@ -4,16 +4,15 @@ import json
 import  pymysql 
 import sqlite3
 from safrs.errors import JsonapiError, ValidationError
-#import postresql TODO
+import oracledb
 from flask import jsonify
 
 db = safrs.DB  
 
 class FreeSQL():
-      
-         
+    
         def __init__(self,
-             sqlExpression: str):
+            sqlExpression: str):
             """Initialize a FreeSQL expression
 
             Args:
@@ -43,10 +42,19 @@ class FreeSQL():
                         } for row in cur.fetchall()]
                     cur.connection.close()
                     results = dict(resultList[0])
-                else:
+                elif conn_str.drivername == 'mysql+pymysql':
                     cur = conn.cursor(pymysql.cursors.DictCursor)
                     cursor = cur.execute(sql)
                     results = cur.fetchall()
+                else:
+                    cursor = conn.cursor()
+                    cursor.execute(sql)
+                    num_rows=20
+                    while True:
+                        rows = cursor.fetchmany(size=num_rows)
+                        if not rows:
+                            break
+                    return rows
                 data = json.dumps(results, indent=4,default=str) #TODO return Decimal() as str
             except Exception as ex:
                 print(f"FreeSQL Error {ex}")
@@ -73,6 +81,15 @@ class FreeSQL():
                     db=database,
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor)
+            elif conn_str.drivername == 'oracle+oracledb':
+                host = conn_str.host or "localhost"
+                port = conn_str.port or "1521"
+                user = conn_str.username
+                pw = conn_str.password
+                #sn = conn_str.service_name 
+                cp = oracledb.ConnectParams(host=host, port=port, service_name="freepdb1") #TODO
+                connection = oracledb.connect(user=user, password=pw, params=cp)
+                return connection
             else:
                 print(f"FreeSQL Connection to database type {conn_str.drivername} not supported at this time")
                 return None
@@ -111,6 +128,6 @@ class FreeSQL():
                     sql = sql.replace(":OFFSET", offset, 10)
                     #sql = sql.replace(":ORDER",orderStr, 10)
                 except Exception as ex:
-                   print(f"FreeSQL fixup error {ex}")
+                    print(f"FreeSQL fixup error {ex}")
                     
             return sql

@@ -10,7 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import get_referencing_foreign_keys
 from sqlalchemy import event, MetaData, and_, or_
 from sqlalchemy.inspection import inspect
-from sqlalchemy import select
+from sqlalchemy import select, insert, update
 from sqlalchemy.sql import text
 from flask import jsonify
 from sqlalchemy_utils.query_chain import QueryChain
@@ -19,18 +19,17 @@ import safrs
 from safrs.errors import JsonapiError, ValidationError
 from security.system.authorization import Security
 from typing import List, Dict, Tuple
-import util
+import api.system.api_utils
 import json 
 import requests
-from config import Config
-from config import Args
+from config.config import Config
+from config.config import Args
 
 resource_logger = logging.getLogger("api.customize_api")
 
 db = safrs.DB 
 """this is a safrs db not DB"""
 session = db.session  # type: sqlalchemy.orm.scoping.scoped_session
-TENANT_ID =  "clientId"
 class DotDict(dict):
     """ dot.notation access to dictionary attributes """
     # thanks: https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary/28463329
@@ -47,18 +46,18 @@ class CustomEndpoint():
         , children = [
             CustomEndpoint(model_class=models.Order, alias = "orders"
                 , join_on=models.Order.CustomerId
-                , fields = [models.Order.AmountTotal, "Total", models.Order.ShippedDate, "Ship Date"]
+                , fields = [(models.Order.AmountTotal, "Total"),(models.Order.ShippedDate, "Ship Date")]
                 , children = CustomEndpoint(model_class=models.OrderDetail, alias="details"
                     , join_on=models.OrderDetail.OrderId
                     , fields = [models.OrderDetail.Quantity, models.OrderDetail.Amount]
                     , children = CustomEndpoint(model_class=models.Product, alias="data"
                         , join_on=models.OrderDetail.ProductId
                         , fields=[models.Product.UnitPrice, models.Product.UnitsInStock]
-                        , isParent=False
+                        , isParent=True
                         , isCombined=False
-                      )
-                   )
-                ),
+                    )
+                )
+            ),
             CustomEndpoint(model_class=models.OrderAudit, alias="orderAudit")  # sibling child
             ]
         )
@@ -134,8 +133,7 @@ class CustomEndpoint():
         self._columnNames = [k.key for k in self._model_class._s_columns]
 
     def __str__(self):
-            print(
-                f"Alias {self.alias} Model: {self._model_class.__name__} PrimaryKey: {self.primaryKey} FilterBy: {self.filter_by} OrderBy: {self.order_by}")
+            return  f"Alias {self.alias} Model: {self._model_class.__name__} PrimaryKey: {self.primaryKey} FilterBy: {self.filter_by} OrderBy: {self.order_by}"
 
     def get(self: CustomEndpoint, request: safrs.request.SAFRSRequest, include: str, altKey: str = None) -> dict:
         """_summary_
@@ -161,7 +159,12 @@ class CustomEndpoint():
         elif key is not None and value is not None:
             query += f"&filter%5B{key}%5D={value}"
         else: 
-            query =  query if filter_ is None else f"{query} and {filter_}"
+            #query =  query if filter_ is None or filter_ is '1=1' else f"{query} and {filter_}"
+            query = (
+                query
+                if filter_ is None or filter_ == '1=1'
+                else f"{query} and {filter_}"
+            )
         self._href = f"{request.url_root[:-1]}{request.path}"
         print(f"limit: {limit}, offset: {offset}, sort: {order_by}, query: {query}")
         params = {'page[limit]': limit, 'page[offset]': offset}
@@ -199,7 +202,7 @@ class CustomEndpoint():
         #"Manager" in self._model_class._s_relationships.keys() #_s_jsonapi_attrs.keys()
         #rom .jsonapi_formatting import jsonapi_filter_query, jsonapi_filter_list, jsonapi_sort, jsonapi_format_response, paginate
         #self._model_class.__mapper__.relationships.get("Manages").primaryjoin.left or right left.key or right.key
-      
+    
         '''
 
         Returns:
@@ -219,17 +222,20 @@ class CustomEndpoint():
                 raise ValidationError( 'Delete is not supported at this time')
             elif method == 'OPTIONS':
                 return jsonify(success=True)
-            elif method in ["POST","PUT","PATCH"]:
+            elif method in ["PUT","PATCH"]:
+                payload = json.loads(request.data.decode('utf-8'))
+                api = "api" # TODO Args.api_prefix()
+                serverURL = f"{request.host_url}{api}"
+                url = f"{serverURL}/{self._model_class_name}"
+                return self.handlePayload(method=method, payload=payload, url=url, jwt=jwt, altKey=altKey)
+            elif method == 'POST':
                 try:
                     payload = json.loads(request.data.decode('utf-8'))
-                    api = Args.api_prefix
-                    serverURL = f"{request.host_url}{api}"
-                    url = f"{serverURL}/{self._model_class_name}"
-                    return self.handlePayload(method, payload, url, jwt)
+                    return self.insert_or_update(payload=payload, altKey=altKey)
                 except Exception as ex:
                     raise ValidationError( f'{method} error on entity {self._model_class_name} msg: {ex}') from ex
-        serverURL = f"{request.host_url}api"
-        query = f"{serverURL}/{self._model_class_name}"
+        #serverURL = f"{request.host_url}api"
+        #query = f"{serverURL}/{self._model_class_name}"
         resource_logger.debug(f"CustomEndpoint execute on: {self._model_class_name} using alias: {self.alias}")
         filter_by = None
         #key = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
@@ -258,12 +264,12 @@ class CustomEndpoint():
         """
         if isinstance(self.children, CustomEndpoint):
             self.children._parentResource = self
-            self.children._href = self._href
+            self.children._href = f"{self.modifyPath(self._href)}{self.children._model_class_name}"
             self.children._processChildren()
         elif len(self.children) > 0:
             for child in self.children:
                 child._parentResource = self
-                child._href = self._href
+                child._href = f"{self.modifyPath(self._href)}{child._model_class_name}"
                 child._processChildren()
         
     def _collectPKeys(self, keyName)-> list:
@@ -320,7 +326,7 @@ class CustomEndpoint():
                 qry = session_qry.filter(self.filter_by)
                 if self.order_by is not None:
                     qry = qry.order_by(self.order_by)
-                if filter_by is not None:
+                if filter_by is not None and 'undefined' not in filter_by:
                     resource_logger.debug(
                     f"Adding filter_by: {filter_by}")
                     qry = qry.filter(text(filter_by))
@@ -368,7 +374,7 @@ class CustomEndpoint():
                 andOp = " and "
         else:
             aFilter = self.buildJoin("", self.join_on)        
-       
+    
         return aFilter
 
     def buildJoin(self, andOp: str, join: Column) -> str:
@@ -611,7 +617,26 @@ class CustomEndpoint():
                 self.children._parentResource = self
                 self.children.processIncludedRows(included)
                 
-    def handlePayload(self, method: str, payload: any, url: str, jwt: str) -> any:
+    def insert_or_update(self, payload: dict,altKey: str = None) -> any: 
+        p = []
+        if not isinstance(payload, list):
+            p.append(payload)
+        else:
+            p = payload
+        result = []
+        for row in p:
+            clz = self.copy_dict_to_row(payload=row)
+            if altKey is not None:
+                setattr(clz, self.primaryKey, altKey)
+            session.add(clz)         
+            session.commit()
+            d = {}
+            for column in clz.__table__.columns:
+                d[column.name] = str(getattr(clz, column.name))
+            result.append(d)
+        return result
+    
+    def handlePayload(self, method: str, payload: any, url: str, jwt: str,altKey: str = None) -> any:
         """ tests
             stmt = ""
             if method == 'POST':
@@ -624,24 +649,35 @@ class CustomEndpoint():
             # db.session.select().filter_by().one()
             return db.engine.execute(f"select * from {self._model_class_name} limit 1").one()
         """
-        j = self.create_args(payload)
+        j = self.create_args(method, payload, altKey)
         # check payload for a single row
         clz = self._model_class
         #key = self.populateClass(clz, payload)
-        key = payload[self.primaryKey] if self.primaryKey in payload else "-1"
+        # print(self.to_dict(payload))
+        #  need to do a loop to post/patch each level
+        #pkey = None
+        #for row, model_clz in self.getRowFrom(payload, pkey): #cascade primary key
+        #    pkey = insert(self.model_clz).values(dmlColumnKeyMapping(row)).returning(model_clz.get(self.primary_key))
+        #    or
+        #    populate(model_clz, row, pkey)
+        #    session.add(model_clz)
+        #    pkey = model_clz.get(self.primary_key) if hassattr(model_clz, self.primary_key) else None
+        
+        key = altKey if altKey else payload[self.primaryKey] if self.primaryKey in payload else payload[self.primaryKey.upper()] if self.primaryKey.upper() in payload else "-1"
         if Args.security_enabled:
             header = {"Authorization": jwt,"Content-Type": "application/json","accept": "application/vnd.api+json"}
             response = (
-                requests.post(url=url, json=j, headers=header)
+                requests.post(url=url, json=j, headers=header) #insert(self._model_class).values(self.dmlColumnKeyMapping(row)).returning("id")
                 if method == 'POST'
-                    else requests.patch(url=f"{url}/{key}", json=j, headers=header)
+                    else requests.patch(url=f"{url}/{key}", json=j, headers=header) #update(self._model_class).values(self.dmlColumnKeyMapping(row))
             )
         else:
-            response = (
-                requests.post(url=url, json=j) 
-                if method == "POST" 
-                    else requests.patch(url=f"{url}/{key}", data=j) 
-                )
+            response = {}
+            if method == "POST":
+                response = requests.post(url=url, json=j) 
+            elif method in ["PUT","PATCH" ]:
+                response = requests.patch(url=f"{url}/{key}", data=j) 
+                
         return json.dumps(json.loads(response.text)["data"]["attributes"]) if response.status_code < 301 else response.content
 
     def populateClass(self, clz, payload):
@@ -649,10 +685,13 @@ class CustomEndpoint():
             clz(p = payload[p])
         return clz[self.primaryKey]
     
-    def create_args(self, attributes):
+    def create_args(self, method:str, attributes:any, altKey:str = None):
         key = attributes[self.primaryKey] if self.primaryKey in attributes else None
+        key = attributes[self.primaryKey.upper()] if self.primaryKey.upper() in attributes else key
+        key = altKey if altKey != None else key
         result = None
-        if key is None:
+        attributes = self.lower_case(attributes)
+        if key is None or method == 'POST':
             result =  \
                 { "data": {
                     "attributes": attributes,
@@ -664,21 +703,28 @@ class CustomEndpoint():
                 { "data": {
                     "attributes": self.move_metadata(attributes),
                     "type": self._model_class_name,
-                    "id": key
+                    "id": int(key) if self.primaryKeyType.python_type == int else key
                 }
             }
         v =  str(result)
         v = v.replace("'","\"",1000)
         return json.loads(v.replace("None","null",100))
 
+    def lower_case(self, attrs) -> any:
+        result = {}
+        for a in attrs:
+            result[a.lower()] = attrs[a]
+        return result
+        
     def move_metadata(self, json_dict:dict) -> dict:
         if "@metadata" in json_dict:
-            json_dict["S_CheckSum"] = json_dict["@metadata"]["checksum"]
+            if json_dict["@metadata"]["checksum"] != 'override':
+                json_dict["S_CheckSum"] = json_dict["@metadata"]["checksum"]
             json_dict.pop("@metadata")
         return json_dict
-         
+        
     def quoteStr(self, val):
-        return val if f"{self.primaryKeyType}" == 'INTEGER' else f"'{val}'"
+        return val if f"{self.primaryKeyType}" == 'INTEGER' else val if val.startswith("'") else f"'{val}'"
     
     def rows_to_dict(self: CustomEndpoint, result: flask_sqlalchemy.BaseQuery) -> list:
         """
@@ -698,7 +744,7 @@ class CustomEndpoint():
                 row_as_dict = each_row._asdict()
             else:
                 row_as_dict = each_row.to_dict()
-            if not hasattr(row_as_dict,"id"):
+            if hasattr(each_row,"id"):
                 with contextlib.suppress(Exception):
                     row_as_dict["id"] = each_row.id
             rows.append(row_as_dict)
@@ -736,46 +782,56 @@ class CustomEndpoint():
         self._executeChildren()
         
     def parseArgs(self,args):
+        '''
+        Args = filter.data.data.data = "someexpression=N" 
+        '''
         tenant_filter = None
         _filter = None
         pkey = self.primaryKey
+        dots = self.getAlias()
+        filter_with_alias = f"filter.{dots}"if len(dots) > 0 else ""
         value = args.get(pkey) if args.get(pkey) is not None else args.get(f"filter[{pkey}]")
         if value is None:
             _sys_filter:str = args.get("sysfilter") 
-            _filter:str = args.get("filter")
-           
+            _filter:str = args.get("filter") if args.get("filter") is not None else args.get(filter_with_alias) if args.get(filter_with_alias) is not None else None
+        
             """
             sysfilter=equal(fieldName, value)
             filter=fieldName=value and fieldName=value
             
             """
-            client_id = Security.current_user().client_id if Args.security_enabled else "-1"
             if _sys_filter:
-                 if _sys_filter.startswith("equal("):
+                if _sys_filter.startswith("equal("):
                     f = _sys_filter[6:-1].split(":")
                     pkey = f[0]
                     value = f[1]
             elif _filter:
                 f = _filter.split("=")
-                if (f[0] != TENANT_ID or f[1] != 'undefined') and f[0] == self.primaryKey:
+                if len(f) > 1 and f[1] != 'undefined' and f[0] == self.primaryKey:
                     pkey = f[0]
                     value = f[1]
-                if f[0] == TENANT_ID and f[1] == 'undefined':
-                    _filter = _filter.replace('clientId=undefined', f"clientId={client_id}")
+
         limit = args.get("page[limit]") or args.get("pagesize") or 20
         offset = args.get("page[offset]") or args.get("offset")  or 0
         sort = args.get("sort")
-        # for k in self._model_class._s_columns: print(k.key == 'clientId')
-        if TENANT_ID in self._columnNames and  (_filter is not None and TENANT_ID not in _filter):
-            tenant_filter = f"{TENANT_ID}={client_id}"
-            tenant_filter = f"{tenant_filter} and {_filter}" if _filter is not None else tenant_filter
-        else:
-            tenant_filter = _filter if  _filter is not None else None
+        tenant_filter = _filter if  _filter is not None else "1=1"
 
         return pkey, value, limit, offset, sort, tenant_filter
     
+    def getAlias(self):
+        #fillter.data.data.data="someexpression=areaCode<3"
+        dots = ""
+        if self.children is not None:
+            if isinstance(self.children, CustomEndpoint):
+                return f"{self.alias}.{self.children.alias}"
+            for child in self.children:
+                if dots == "":
+                    dots = f".{self.alias}"
+                dots = f"{dots}.{child.alias}"
+        return dots
+        
     def transform(self, style:str, key:str, json_: dict) -> dict:
-	    # use this to change the output (pipeline) of the result
+	# use this to change the output (pipeline) of the result
         json_dict = {}
         json_result = []
         result = []
@@ -783,7 +839,7 @@ class CustomEndpoint():
             if self._method == 'OPTIONS':
                 return json_
             json_dict = json.loads(json_) if isinstance(json_, str) else json_
-            json_result = json_dict.get(key, json_dict) if key in json_dict else [json_dict]
+            json_result = json_dict.get(key, json_dict) if key in json_dict else json_dict if isinstance(json_dict, list) else [json_dict]
         except Exception as ex:
             resource_logger.error(f"Transform Error on style {style} using key: {key} on {json_} error: {ex}")
             return json_
@@ -821,3 +877,141 @@ class CustomEndpoint():
                 if self.children.alias in json_dict:
                         self.children.move_checksum(json_dict[self.children.alias])
         return json_dict
+    
+    def to_dict(self, row: object, current_endpoint: 'CustomEndpoint' = None) -> dict:
+        """returns row as dict per custom resource definition, with subobjects
+
+        Args:
+            row (_type_): a SQLAlchemy row
+
+        Returns:
+            dict: row formatted as dict
+        """
+        custom_endpoint = self
+        if current_endpoint is not None:
+            custom_endpoint = current_endpoint
+        # row_as_dict = self.row_to_dict(row)
+        row_as_dict = {}
+        for each_field in custom_endpoint.fields:
+            if isinstance(each_field, tuple):
+                row_as_dict[each_field[1]] = getattr(row, each_field[0].name)
+            else:
+                if isinstance(each_field, str):
+                    print("Coding error - you need to use TUPLE for attr/alias")
+                row_as_dict[each_field.name] = getattr(row, each_field.name)
+        
+        custom_endpoint_child_list = custom_endpoint.children
+        if isinstance(custom_endpoint_child_list, list) is False:
+            custom_endpoint_child_list = []
+            custom_endpoint_child_list.append(custom_endpoint.children)
+        for each_child_def in custom_endpoint_child_list:
+            child_property_name = each_child_def.role_name
+            if child_property_name == '':
+                child_property_name = "OrderList"  # FIXME default from class name
+            if child_property_name.startswith('Product'):
+                debug = 'good breakpoint'
+            row_dict_child_list = getattr(row, child_property_name)
+            row_as_dict[each_child_def.alias] = []
+            if each_child_def.isParent:
+                the_parent = getattr(row, child_property_name)
+                the_parent_to_dict = self.to_dict(row = the_parent, current_endpoint = each_child_def)
+                row_as_dict[each_child_def.alias].append(the_parent_to_dict)
+            else:
+                for each_child in row_dict_child_list:
+                    each_child_to_dict = self.to_dict(row = each_child, current_endpoint = each_child_def)
+                    row_as_dict[each_child_def.alias].append(each_child_to_dict)
+        return row_as_dict
+    
+
+    def to_row(self, row_dict: dict, current_endpoint: 'CustomEndpoint' = None) -> object:
+        """Returns SQLAlchemy row(s), converted from safrs-request per subclass custom resource
+
+        Args:
+            safrs_request: a 
+            current_endpoint (IntegrationEndpoint, optional): _description_. Defaults to None.
+
+        Returns:
+            object: SQLAlchemy row / sub-rows, ready to insert
+        """
+
+        print( f"to_row receives row_dict: {row_dict}" )
+
+        custom_endpoint = self
+        if current_endpoint is not None:
+            custom_endpoint = current_endpoint
+        sql_alchemy_row = custom_endpoint._model_class()     # new instance
+        for each_field in custom_endpoint.fields:           # attr mapping  TODO 1 field, not array
+            if isinstance(each_field, tuple):
+                setattr(sql_alchemy_row, each_field[0].name, row_dict[each_field[1]])
+            else:
+                if isinstance(each_field, str):
+                    print("Coding error - you need to use TUPLE for attr/alias")
+                setattr(sql_alchemy_row, each_field.name, row_dict[each_field.name])
+        row_dict = self.move_metadata(row_dict) ## Validate TODO
+        custom_endpoint_child_list = custom_endpoint.children
+        if isinstance(custom_endpoint_child_list, list) is False:
+            custom_endpoint_child_list = []
+            custom_endpoint_child_list.append(custom_endpoint.children)
+        for each_child_def in custom_endpoint_child_list:
+            child_property_name = each_child_def.alias
+            if child_property_name.startswith('Items'):
+                debug = 'good breakpoint'
+            if child_property_name in row_dict:
+                row_dict_child_list = row_dict[child_property_name]
+                # row_as_dict[each_child_def.alias] = []  # set up row_dict child array
+                if each_child_def.isParent:  # FIXME not support (but TODO Lookup!)
+                    #the_parent = getattr(row, child_property_name)
+                    #the_parent_to_dict = self.to_dict(row = the_parent, current_endpoint = each_child_def)
+                    #row_as_dict[each_child_def.alias].append(the_parent_to_dict)
+                    pass
+                else:
+                    for each_row_dict_child in row_dict_child_list:  # recurse for each_child
+                        each_child_row = self.to_row(row_dict = each_row_dict_child, current_endpoint = each_child_def)
+                        child_list = getattr(sql_alchemy_row, each_child_def.role_name)
+                        child_list.append(each_child_row)
+        return sql_alchemy_row
+    
+    def modifyPath(self, path):
+        p = path.split("/")
+        return path.replace(p[len(p)-1],"")
+    
+    def insert(self, request: any, payload: dict) -> any:
+        sqlalchemy_row = self.copy_dict_to_row(payload)
+        session.add(sqlalchemy_row)
+        session.commit()
+        session.flush()
+        return sqlalchemy_row
+    
+    def update(self, payload: dict, pkey: any) -> any:
+        payload = self.move_metadata(payload)
+        sqlalchemy_row = self.copy_dict_to_row(payload)
+        session.add(sqlalchemy_row)
+        session.commit()
+        session.flush()
+        return sqlalchemy_row
+    
+    def copy_dict_to_row(self, payload: dict) -> any:
+        sql_alchemy_row = self._model_class()   
+        if "@metadata" in payload:
+            payload.pop("@metadata")
+        for v in payload:
+            if v.lower() in self._columnNames:
+                setattr(sql_alchemy_row, v.lower() , payload[v])
+        return sql_alchemy_row
+        
+    def transform_to_safrs(self, payload: any, pkey: any = None):
+        if pkey is None:
+            return {"data":
+                {
+                    "attributes": payload
+                },
+                "type" : self._model_class_name
+            }
+        else:
+            return {"data":
+                {
+                    "attributes": payload
+                },
+                "type" : self._model_class_name,
+                "id": pkey
+            }
