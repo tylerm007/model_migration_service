@@ -1,3 +1,28 @@
+import os
+
+class ReposModel(object):
+
+    def __init__(self, db_url, project_directory, model_creation_services):
+
+        self.db_url = db_url
+        self.project_directory = project_directory
+
+        self.number_of_models = 0
+        """ various status / debug information """
+
+        self.model_creation_services = model_creation_services
+        """ access to meta model, including table_to_class_map """
+
+
+    def append_expose_services_file(self, api_path:str, import_statement:str):
+        """ append import to -> append_expose_services_file """
+        file_name = self.get_os_url(self.project_directory + f'{api_path}')
+        expose_services_file = open(file_name, 'a')
+        expose_services_file.write(import_statement)
+        expose_services_file.close()
+
+
+
 def to_camel_case(textStr: str, firstToLower: bool = False):
     """ALS uses singular entity names
 
@@ -101,3 +126,7 @@ def fixupSQL(sql):
         sql = sql.replace("\"","\\\"",40)
         # dealing with double quotes and single quotes
     return f"{sql}"
+
+def get_os_url(url: str) -> str:
+    """ idiotic fix for windows (use 4 slashes to get 1) """
+    return url.replace('\\', '\\\\')
