@@ -155,7 +155,8 @@ class ResourceObj:
                 # if joinType == "joinParent":
                 if not child.jsonObj["isCollection"]:
                     print(nextLevel * f"{space}",",isParent=True")
-                if version != "5.4" and child.jsonObj["isCombined"]:
+                isCombined = child.jsonObj["isCombined"] if "isCombined" in child.jsonObj else False
+                if version != "5.4" and isCombined:
                     print(nextLevel * f"{space}","isCombined=True")
                 
             child.printGetFunc(parentName, nextLevel)
@@ -191,11 +192,14 @@ class ResourceObj:
         jDict = DotDict(self.jsonObj)
         if jDict.useSchemaAttributes:
             return
+        if jDict.resourceType != "TableBased":
+            return
         if jDict.attributes is not None:
             fields = ""
             sep = ""
             for attr in jDict.attributes:
-                attrName = attr["attribute"] if version == "5.4" else attr["alias"]
+                #print("attr",attr,"jDict",jDict)
+                attrName = attr["attribute"] if "attribute" in attr else attr["alias"]
                 fields += f'{sep} (models.{self.entity}.{attrName}, "{attrName}")'
                 sep = ","
             space = "\t"

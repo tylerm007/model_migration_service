@@ -168,10 +168,11 @@ def dataSource(path: Path, no_print: bool = False):
                 with open(fname) as myfile:
                     d = myfile.read()
                     j = json.loads(d)
+                    #print("j:",j)
                     db = j["databaseType"]
-                    url = j["url"]
-                    uname = j["username"]
-                    schema = j["schema"]
+                    url = j["url"] if "url" in j else "JNDI"
+                    uname = j["username"] if "username" in j else "JNDI"
+                    schema = j["schema"] if "schema" in j else "JNDI"
                     if not no_print:
                         print(
                             "------------------------------------------------------------"
@@ -807,7 +808,7 @@ def listDirs(path: Path, section: str = "all", apiURL: str = ""):
         printDir(f"{basepath}{os.sep}{entry}")
 
 
-projectName = "fedex"
+projectName = "gfer"
 apiurl = f"/rest/default/{projectName}/v1"  # this is used for building the resource URL
 api_root = "teamspaces/default/apis"
 running_at = Path(__file__)
@@ -815,7 +816,7 @@ reposLocation = f"{running_at.parent}/CALiveAPICreator.repository"
 basepath = f"{reposLocation}/{api_root}/{projectName}"
 version = "5.4"
 command = "not set"
-section = "resources"  # all is default or resources, rules, security, pipeline_events, data_sources , tests, etc.
+section = "all"  # all is default or resources, rules, security, pipeline_events, data_sources , tests, etc.
 
 if __name__ == "__main__":
     main()

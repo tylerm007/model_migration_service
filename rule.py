@@ -96,8 +96,9 @@ class RuleObj:
                 if ruleJSObj is not None and len(ruleJSObj) > 80:
                     print(f"{tab}calling={funName})")
                 else:
-                    ruleJSObj = ruleJSObj.replace("return","lambda row: ")
-                    print(f"{tab}as_expression={ruleJSObj})")
+                    if ruleJSObj is not None:
+                        ruleJSObj = ruleJSObj.replace("return","lambda row: ")
+                        print(f"{tab}as_expression={ruleJSObj})")
             case "count":
                 attr = j.attribute
                 roleToChildren = to_camel_case(j.roleToChildren).replace("_","")
